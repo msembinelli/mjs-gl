@@ -89,14 +89,20 @@ struct MyGeometry
     {}
 };
 
+bool InitializeSquaresAndDiamonds(MyGeometry *geometry,  int iter){ return true; }
+
+bool InitializeParametricSpiral(MyGeometry *geometry,  int iter){ return true; }
+
+bool InitializeSierpinskiTriangle(MyGeometry *geometry,  int iter){ return true; }
+
 // create buffers and fill with geometry data, returning true if successful
-bool InitializeGeometry(MyGeometry *geometry)
+bool InitializeGeometry(MyGeometry *geometry, int iter)
 {
     //Draw square consisting of two triangles
     const GLfloat vertices[][2] = {
-        { -0.5,  0.5 },
-        { -0.5, -0.5 },
-        {  0.5,  0.5 },
+        {  0.0,  0.5 },
+        {  0.5, 0.5 },
+        {  0.0,  0.0 },
         {  0.5, -0.5 },
         { -0.5, -0.5 },
         {  0.5,  0.5 }
@@ -192,6 +198,16 @@ void ErrorCallback(int error, const char* description)
     cout << description << endl;
 }
 
+enum PolygonType
+{
+	SQUARES_DIAMONDS,
+	PARAMETRIC_SPIRAL,
+	SIERPINSKI_TRIANGLE
+};
+
+PolygonType poly_type = SQUARES_DIAMONDS;
+int poly_iter = 1;
+
 // handles keyboard input events
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -200,22 +216,34 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     	switch(key)
     	{
     	case GLFW_KEY_F1:
+    		poly_type = SQUARES_DIAMONDS;
+    		poly_iter = 1;
     		break;
     	case GLFW_KEY_F2:
+    		poly_type = PARAMETRIC_SPIRAL;
+    		poly_iter = 1;
     		break;
     	case GLFW_KEY_F3:
+    		poly_type = SIERPINSKI_TRIANGLE;
+    		poly_iter = 1;
     		break;
     	case GLFW_KEY_1:
+    		poly_iter = 1;
     		break;
     	case GLFW_KEY_2:
+    		poly_iter = 2;
     		break;
     	case GLFW_KEY_3:
+    		poly_iter = 3;
     		break;
     	case GLFW_KEY_4:
+    		poly_iter = 4;
     		break;
     	case GLFW_KEY_5:
+    		poly_iter = 5;
     		break;
     	case GLFW_KEY_6:
+    		poly_iter = 6;
     		break;
     	case GLFW_KEY_ESCAPE:
     		glfwSetWindowShouldClose(window, GL_TRUE);
@@ -264,15 +292,28 @@ int main(int argc, char *argv[])
     }
 
     // call function to create and fill buffers with geometry data
-    MyGeometry geometry;
-    if (!InitializeGeometry(&geometry))
+    MyGeometry sd_geometry, ps_geometry, st_geometry;
+    if (!InitializeGeometry(&sd_geometry, 1))
         cout << "Program failed to intialize geometry!" << endl;
 
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
     {
-        // call function to draw our scene
-        RenderScene(&geometry, &shader);
+    	switch(poly_type)
+    	{
+    	case SQUARES_DIAMONDS:
+    		InitializeSquaresAndDiamonds(&sd_geometry, poly_iter);
+    		RenderScene(&sd_geometry, &shader);
+    		break;
+    	case PARAMETRIC_SPIRAL:
+    		InitializeParametricSpiral(&ps_geometry, poly_iter);
+    		RenderScene(&ps_geometry, &shader);
+    		break;
+    	case SIERPINSKI_TRIANGLE:
+    		InitializeSierpinskiTriangle(&st_geometry, poly_iter);
+    		RenderScene(&st_geometry, &shader);
+    		break;
+    	}
 
         // scene is rendered to the back buffer, so swap to front for display
         glfwSwapBuffers(window);
@@ -282,7 +323,9 @@ int main(int argc, char *argv[])
     }
 
     // clean up allocated resources before exit
-    DestroyGeometry(&geometry);
+    DestroyGeometry(&sd_geometry);
+    DestroyGeometry(&ps_geometry);
+    DestroyGeometry(&st_geometry);
     DestroyShaders(&shader);
     glfwDestroyWindow(window);
     glfwTerminate();
