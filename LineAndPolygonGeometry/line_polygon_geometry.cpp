@@ -7,6 +7,7 @@
 // Author:  Matthew Sembinelli, University of Calgary
 // Date:    January 17, 2015
 // ==========================================================================
+
 #include <iostream>
 #include <fstream>
 #include <algorithm>
@@ -187,8 +188,33 @@ void ErrorCallback(int error, const char* description)
 // handles keyboard input events
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, GL_TRUE);
+    if (action == GLFW_PRESS)
+    {
+    	switch(key)
+    	{
+    	case GLFW_KEY_F1:
+    		break;
+    	case GLFW_KEY_F2:
+    		break;
+    	case GLFW_KEY_F3:
+    		break;
+    	case GLFW_KEY_1:
+    		break;
+    	case GLFW_KEY_2:
+    		break;
+    	case GLFW_KEY_3:
+    		break;
+    	case GLFW_KEY_4:
+    		break;
+    	case GLFW_KEY_5:
+    		break;
+    	case GLFW_KEY_6:
+    		break;
+    	case GLFW_KEY_ESCAPE:
+    		glfwSetWindowShouldClose(window, GL_TRUE);
+    		break;
+    	}
+    }
 }
 
 // ==========================================================================
