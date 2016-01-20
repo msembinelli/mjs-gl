@@ -83,31 +83,31 @@ void DestroyShaders(MyShader *shader)
 struct MyGeometry
 {
     // OpenGL names for array buffer objects, vertex array object
-    GLuint  vertexBuffer[2];
-    GLuint  colourBuffer[2];
-    GLuint  vertexArray;
+    GLuint  vertexBuffer;
+    GLuint  colourBuffer;
+    GLuint  vertexArray[2];
     GLsizei elementCount;
 
     // initialize object names to zero (OpenGL reserved value)
-    MyGeometry() : vertexBuffer({0,0}), colourBuffer({0,0}), vertexArray(0), elementCount(0)
+    MyGeometry() : vertexBuffer(0), colourBuffer(0), vertexArray({0,0}), elementCount(0)
     {}
 };
 
-bool InitializeSquaresAndDiamonds(MyGeometry *geometry, GLfloat sidelength,  int iter)
+bool InitializeSquaresAndDiamonds(MyGeometry *geometry)
 {
+	GLfloat sidelength = 1.0f;
 	GLfloat vertex = sidelength/2.0f;
 	GLfloat square_vertices[][2] =
 	{
 			{-vertex, -vertex},
 			{-vertex,  vertex},
-			{    0.0, -vertex},
+			{ vertex, -vertex},
 			{-vertex,  vertex},
 			{ vertex,  vertex},
-			{    0.0, -vertex}
-
+			{ vertex, -vertex}
 	};
 
-	GLfloat colours1[][3] =
+	GLfloat colours[][3] =
 	{
 	        { 1.0, 0.0, 0.0 },
 	        { 1.0, 0.0, 0.0 },
@@ -115,17 +115,6 @@ bool InitializeSquaresAndDiamonds(MyGeometry *geometry, GLfloat sidelength,  int
 	        { 1.0, 0.0, 0.0 },
 	        { 1.0, 0.0, 0.0 },
 	        { 1.0, 0.0, 0.0 }
-
-	};
-
-	GLfloat colours2[][3] =
-	{
-	        { 0.0, 1.0, 0.0 },
-	        { 0.0, 1.0, 0.0 },
-	        { 0.0, 1.0, 0.0 },
-	        { 0.0, 1.0, 0.0 },
-	        { 0.0, 1.0, 0.0 },
-	        { 0.0, 1.0, 0.0 }
 
 	};
 
@@ -143,105 +132,26 @@ bool InitializeSquaresAndDiamonds(MyGeometry *geometry, GLfloat sidelength,  int
 		square_vertices_trans[i][1] = glm::value_ptr(mat)[5];
 	}
 
-    geometry->elementCount = 12;
+	GLfloat colours2[][3] =
+	{
+	        { 0.0, 0.0, 1.0 },
+	        { 0.0, 0.0, 1.0 },
+	        { 0.0, 0.0, 1.0 },
+	        { 0.0, 0.0, 1.0 },
+	        { 0.0, 0.0, 1.0 },
+	        { 0.0, 0.0, 1.0 }
 
-    // create an array buffer object for storing our vertices
-    glGenBuffers(2, geometry->vertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer[0]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(square_vertices), square_vertices, GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer[1]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(square_vertices_trans), square_vertices_trans, GL_STATIC_DRAW);
+	};
 
-    // create another one for storing our colours
-    glGenBuffers(2, geometry->colourBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer[0]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(colours1), colours1, GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer[1]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(colours2), colours2, GL_STATIC_DRAW);
+    geometry->elementCount = 6;
 
-    // create a vertex array object encapsulating all our vertex attributes
-    glGenVertexArrays(1, &geometry->vertexArray);
-    glBindVertexArray(geometry->vertexArray);
-
-    // associate the position array with the vertex array object
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer[0]);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer[1]);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(1);
-
-    // associate the colour array with the vertex array object
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer[0]);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(2);
-
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer[1]);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(3);
-
-    // unbind our buffers, resetting to default state
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
-	return !CheckGLErrors();
-}
-
-bool InitializeParametricSpiral(MyGeometry *geometry,  int iter){ return !CheckGLErrors(); }
-
-bool InitializeSierpinskiTriangle(MyGeometry *geometry,  int iter){ return !CheckGLErrors(); }
-
-// create buffers and fill with geometry data, returning true if successful
-/*bool InitializeGeometry(MyGeometry *geometry, int iter)
-{
-    //Draw square consisting of two triangles
-    const GLfloat vertices[][2] = {
-        { -0.5,  0.5 },
-        {  0.0,  0.5 },
-        { -0.5,  0.0 },
-        {  0.0,  0.5 },
-        {  0.5,  0.0 },
-        {  0.5,  0.5 },
-		{  0.5,  0.0 },
-		{  0.5, -0.5 },
-		{  0.0, -0.5 },
-		{ -0.5, -0.5 },
-		{ -0.5,  0.0 },
-		{  0.0, -0.5 },
-		{ -0.5,  0.0 },
-		{  0.0,  0.5 },
-		{  0.5,  0.0 }
-    };
-
-    const GLfloat colours[][3] = {
-        { 1.0, 0.0, 0.0 },
-        { 1.0, 0.0, 0.0 },
-        { 1.0, 0.0, 0.0 },
-        { 1.0, 0.0, 0.0 },
-        { 1.0, 0.0, 0.0 },
-        { 1.0, 0.0, 0.0 },
-        { 1.0, 0.0, 0.0 },
-        { 1.0, 0.0, 0.0 },
-        { 1.0, 0.0, 0.0 },
-		{ 1.0, 0.0, 0.0 },
-		{ 1.0, 0.0, 0.0 },
-		{ 1.0, 0.0, 0.0 },
-		{ 0.0, 1.0, 0.0 },
-		{ 0.0, 1.0, 0.0 },
-		{ 0.0, 1.0, 0.0 }
-    };
-    geometry->elementCount = 15;
-
-    // these vertex attribute indices correspond to those specified for the
-    // input variables in the vertex shader
-    const GLuint VERTEX_INDEX = 0;
-    const GLuint COLOUR_INDEX = 1;
+    GLuint VERTEX_INDEX = 0;
+    GLuint COLOUR_INDEX = 1;
 
     // create an array buffer object for storing our vertices
     glGenBuffers(1, &geometry->vertexBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(square_vertices), square_vertices, GL_STATIC_DRAW);
 
     // create another one for storing our colours
     glGenBuffers(1, &geometry->colourBuffer);
@@ -249,8 +159,8 @@ bool InitializeSierpinskiTriangle(MyGeometry *geometry,  int iter){ return !Chec
     glBufferData(GL_ARRAY_BUFFER, sizeof(colours), colours, GL_STATIC_DRAW);
 
     // create a vertex array object encapsulating all our vertex attributes
-    glGenVertexArrays(1, &geometry->vertexArray);
-    glBindVertexArray(geometry->vertexArray);
+    glGenVertexArrays(2, geometry->vertexArray);
+    glBindVertexArray(geometry->vertexArray[0]);
 
     // associate the position array with the vertex array object
     glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
@@ -262,38 +172,67 @@ bool InitializeSierpinskiTriangle(MyGeometry *geometry,  int iter){ return !Chec
     glVertexAttribPointer(COLOUR_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(COLOUR_INDEX);
 
-    // unbind our buffers, resetting to default state
+    //VAO2
+    glGenBuffers(1, &geometry->vertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(square_vertices_trans), square_vertices_trans, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &geometry->colourBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(colours2), colours2, GL_STATIC_DRAW);
+
+    glBindVertexArray(geometry->vertexArray[1]);
+
+    // associate the position array with the vertex array object
+    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
+    glVertexAttribPointer(VERTEX_INDEX, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(VERTEX_INDEX);
+
+    // associate the colour array with the vertex array object
+    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
+    glVertexAttribPointer(COLOUR_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(COLOUR_INDEX);
+
+
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    // check for OpenGL errors and return false if error occurred
-    return !CheckGLErrors();
-}*/
+	return !CheckGLErrors();
+}
+
+bool InitializeParametricSpiral(MyGeometry *geometry,  int iter){ return !CheckGLErrors(); }
+
+bool InitializeSierpinskiTriangle(MyGeometry *geometry,  int iter){ return !CheckGLErrors(); }
 
 // deallocate geometry-related objects
 void DestroyGeometry(MyGeometry *geometry)
 {
     // unbind and destroy our vertex array object and associated buffers
     glBindVertexArray(0);
-    glDeleteVertexArrays(1, &geometry->vertexArray);
-    glDeleteBuffers(2, geometry->vertexBuffer);
-    glDeleteBuffers(2, geometry->colourBuffer);
+    glDeleteVertexArrays(2, geometry->vertexArray);
+    glDeleteBuffers(1, &geometry->vertexBuffer);
+    glDeleteBuffers(1, &geometry->colourBuffer);
 }
 
 // --------------------------------------------------------------------------
 // Rendering function that draws our scene to the frame buffer
 
-void RenderScene(MyGeometry *geometry, MyShader *shader)
+void RenderScene(MyGeometry *geometry, MyShader *shader, GLuint iter)
 {
     // clear screen to a dark grey colour
     glClearColor(0.2, 0.2, 0.2, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
+
     // bind our shader program and the vertex array object containing our
     // scene geometry, then tell OpenGL to draw our geometry
     glUseProgram(shader->program);
-    glBindVertexArray(geometry->vertexArray);
-    glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
+
+    glBindVertexArray(geometry->vertexArray[0]);
+    glDrawArraysInstanced(GL_TRIANGLES, 0, geometry->elementCount, iter);
+
+    glBindVertexArray(geometry->vertexArray[1]);
+    glDrawArraysInstanced(GL_TRIANGLES, 0, geometry->elementCount, iter);
 
     // reset state to default (no shader or geometry bound)
     glBindVertexArray(0);
@@ -321,7 +260,7 @@ enum PolygonType
 };
 
 PolygonType poly_type = SQUARES_DIAMONDS;
-int poly_iter = 1;
+GLuint poly_iter = 1;
 
 // handles keyboard input events
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -410,6 +349,8 @@ int main(int argc, char *argv[])
     MyGeometry sd_geometry, ps_geometry, st_geometry;
     /*if (!InitializeGeometry(&sd_geometry, 1))
         cout << "Program failed to initialize geometry!" << endl;*/
+	InitializeShaders(&sd_shader);
+	InitializeSquaresAndDiamonds(&sd_geometry);
 
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
@@ -417,9 +358,8 @@ int main(int argc, char *argv[])
     	switch(poly_type)
     	{
     	case SQUARES_DIAMONDS:
-    		InitializeShaders(&sd_shader);
-    		InitializeSquaresAndDiamonds(&sd_geometry, 1.0, poly_iter);
-    		RenderScene(&sd_geometry, &sd_shader);
+    		RenderScene(&sd_geometry, &sd_shader, 4);
+    		poly_type = SQUARES_DIAMONDS;
     		break;
     	case PARAMETRIC_SPIRAL:
     		InitializeParametricSpiral(&ps_geometry, poly_iter);
