@@ -17,8 +17,10 @@ out vec3 Colour;
 
 void main()
 {
-    // assign vertex position without modification
-    gl_Position = vec4(VertexPosition, 0.0, 1.0);
+    vec2 pos;
+    pos =  VertexPosition * vec2(pow(0.5, gl_InstanceID));
+    // assign vertex position with instanced scaling
+    gl_Position = vec4(pos, 0.0, 1.0);
     
     // assign output colour to be interpolated
     Colour = VertexColour;
