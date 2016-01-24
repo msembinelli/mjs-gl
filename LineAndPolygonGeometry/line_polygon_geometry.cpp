@@ -16,10 +16,8 @@
 #define GLFW_INCLUDE_GLCOREARB
 #define GL_GLEXT_PROTOTYPES
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <glm/gtx/rotate_vector.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/ext.hpp>
+#include <math.h>
+#include <vector>
 
 using namespace std;
 
@@ -32,6 +30,17 @@ bool CheckGLErrors();
 string LoadSource(const string &filename);
 GLuint CompileShader(GLenum shaderType, const string &source);
 GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader);
+
+// Enums
+enum PolygonType
+{
+	SQUARES_DIAMONDS,
+	PARAMETRIC_SPIRAL,
+	SIERPINSKI_TRIANGLE
+};
+
+PolygonType poly_type = SQUARES_DIAMONDS;
+GLuint poly_iter = 1;
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL shader programs for rendering
@@ -93,11 +102,50 @@ struct MyGeometry
     {}
 };
 
+bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat[2]> *vertex_vec, vector<GLfloat[3]> *colour_vec)
+{
+    geometry->elementCount = vertex_vec->size();
+
+    GLuint VERTEX_INDEX = 0;
+    GLuint COLOUR_INDEX = 1;
+
+    // create an array buffer object for storing our vertices
+    glGenBuffers(1, &geometry->vertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, geometry->elementCount*sizeof(GLfloat[2]), &(*vertex_vec)[0], GL_STATIC_DRAW);
+
+    // create another one for storing our colours
+    glGenBuffers(1, &geometry->colourBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
+    glBufferData(GL_ARRAY_BUFFER, geometry->elementCount*sizeof(GLfloat[3]), &(*colour_vec)[0], GL_STATIC_DRAW);
+
+    // create a vertex array object encapsulating all our vertex attributes
+    glGenVertexArrays(1, &geometry->vertexArray);
+    glBindVertexArray(geometry->vertexArray);
+
+    // associate the position array with the vertex array object
+    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
+    glVertexAttribPointer(VERTEX_INDEX, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(VERTEX_INDEX);
+
+    // associate the colour array with the vertex array object
+    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
+    glVertexAttribPointer(COLOUR_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(COLOUR_INDEX);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+	return !CheckGLErrors();
+}
+
 bool InitializeSquaresAndDiamonds(MyGeometry *geometry)
 {
+	GLuint segments = 16;
 	GLfloat sidelength = 1.0f;
 	GLfloat vertex = sidelength/2.0f;
-	GLfloat square_vertices[][2] =
+
+	GLfloat vertices[][2] =
 	{
 			{ vertex,  vertex},
 			{ vertex, -vertex},
@@ -138,44 +186,38 @@ bool InitializeSquaresAndDiamonds(MyGeometry *geometry)
 
 	};
 
-    geometry->elementCount = 16;
+	vector<GLfloat[2]> vertex_vec(vertices, vertices + sizeof(vertices) / sizeof(vertices[0]));
+	vector<GLfloat[3]> colour_vec(colours, colours + sizeof(colours) / sizeof(colours[0]));
 
-    GLuint VERTEX_INDEX = 0;
-    GLuint COLOUR_INDEX = 1;
+	return BindGeometryBuffers(geometry, &vertex_vec, &colour_vec);
+}
 
-    // create an array buffer object for storing our vertices
-    glGenBuffers(1, &geometry->vertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(square_vertices), square_vertices, GL_STATIC_DRAW);
+bool InitializeParametricSpiral(MyGeometry *geometry, GLuint iter = 1)
+{
+	GLuint segments = 200 * iter;
+	GLfloat vertices[segments][2];
+	GLfloat colours[segments][3];
+	for(GLuint i = 0; i < segments; i++)
+	{
+		GLfloat theta = i*(iter*2.f*M_PI/(segments - 1));
+		vertices[i][0] = theta/50.f*cos(theta);
+		vertices[i][1] = -theta/50.f*sin(theta);
+		colours[i][0] = i*(1.0/segments);
+		colours[i][1] = 1.0 - i*(1.0/segments);
+		colours[i][2] = 0.0;
+	}
 
-    // create another one for storing our colours
-    glGenBuffers(1, &geometry->colourBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(colours), colours, GL_STATIC_DRAW);
+	vector<GLfloat[2]> vertex_vec(vertices, vertices + sizeof(vertices) / sizeof(vertices[0]));
+	vector<GLfloat[3]> colour_vec(colours, colours + sizeof(colours) / sizeof(colours[0]));
 
-    // create a vertex array object encapsulating all our vertex attributes
-    glGenVertexArrays(1, &geometry->vertexArray);
-    glBindVertexArray(geometry->vertexArray);
+	return BindGeometryBuffers(geometry, &vertex_vec, &colour_vec);
+}
 
-    // associate the position array with the vertex array object
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
-    glVertexAttribPointer(VERTEX_INDEX, 2, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(VERTEX_INDEX);
-
-    // associate the colour array with the vertex array object
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
-    glVertexAttribPointer(COLOUR_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(COLOUR_INDEX);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+bool InitializeSierpinskiTriangle(MyGeometry *geometry)
+{
 
 	return !CheckGLErrors();
 }
-
-bool InitializeParametricSpiral(MyGeometry *geometry){ return !CheckGLErrors(); }
-
-bool InitializeSierpinskiTriangle(MyGeometry *geometry){ return !CheckGLErrors(); }
 
 // deallocate geometry-related objects
 void DestroyGeometry(MyGeometry *geometry)
@@ -190,19 +232,28 @@ void DestroyGeometry(MyGeometry *geometry)
 // --------------------------------------------------------------------------
 // Rendering function that draws our scene to the frame buffer
 
-void RenderScene(MyGeometry *geometry, MyShader *shader, GLuint iter)
+void RenderScene(MyGeometry *geometry, MyShader *shader)
 {
     // clear screen to a dark grey colour
     //glClearColor(0.2, 0.2, 0.2, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-
     // bind our shader program and the vertex array object containing our
     // scene geometry, then tell OpenGL to draw our geometry
     glUseProgram(shader->program);
-
 	glBindVertexArray(geometry->vertexArray);
-	glDrawArraysInstanced(GL_LINES, 0, geometry->elementCount, iter);
+
+	switch(poly_type)
+	{
+	case SQUARES_DIAMONDS:
+		glDrawArraysInstanced(GL_LINES, 0, geometry->elementCount, poly_iter);
+		break;
+	case PARAMETRIC_SPIRAL:
+		glDrawArrays(GL_LINE_STRIP, 0, geometry->elementCount);
+		break;
+	case SIERPINSKI_TRIANGLE:
+		break;
+	}
 
     // reset state to default (no shader or geometry bound)
     glBindVertexArray(0);
@@ -221,16 +272,6 @@ void ErrorCallback(int error, const char* description)
     cout << "GLFW ERROR " << error << ":" << endl;
     cout << description << endl;
 }
-
-enum PolygonType
-{
-	SQUARES_DIAMONDS,
-	PARAMETRIC_SPIRAL,
-	SIERPINSKI_TRIANGLE
-};
-
-PolygonType poly_type = SQUARES_DIAMONDS;
-GLuint poly_iter = 1;
 
 // handles keyboard input events
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -314,25 +355,33 @@ int main(int argc, char *argv[])
     // call function to load and compile shader programs
     MyShader shader[3];
 
-    if(!(InitializeShaders(&shader[SQUARES_DIAMONDS], "vertex_sd.glsl", "fragment.glsl") ||
+    InitializeShaders(&shader[SQUARES_DIAMONDS], "vertex_sd.glsl", "fragment.glsl");
+    InitializeShaders(&shader[PARAMETRIC_SPIRAL], "vertex_ps.glsl", "fragment.glsl");
+    InitializeShaders(&shader[SIERPINSKI_TRIANGLE], "vertex_st.glsl", "fragment.glsl");
+
+   /* if(!(InitializeShaders(&shader[SQUARES_DIAMONDS], "vertex_sd.glsl", "fragment.glsl") ||
 	     InitializeShaders(&shader[PARAMETRIC_SPIRAL], "vertex_ps.glsl", "fragment.glsl") ||
 	     InitializeShaders(&shader[SIERPINSKI_TRIANGLE], "vertex_st.glsl", "fragment.glsl")))
     {
         cout << "Program could not initialize shaders, TERMINATING" << endl;
         return -1;
-    }
+    }*/
 
 
     // call function to create and fill buffers with geometry data
     MyGeometry geometry[3];
 
-    if(!(InitializeSquaresAndDiamonds(&geometry[SQUARES_DIAMONDS]) ||
+    InitializeSquaresAndDiamonds(&geometry[SQUARES_DIAMONDS]);
+    InitializeParametricSpiral(&geometry[PARAMETRIC_SPIRAL]);
+    InitializeSierpinskiTriangle(&geometry[SIERPINSKI_TRIANGLE]);
+
+    /*if(!(InitializeSquaresAndDiamonds(&geometry[SQUARES_DIAMONDS]) ||
 	     InitializeParametricSpiral(&geometry[PARAMETRIC_SPIRAL])   ||
 	     InitializeSierpinskiTriangle(&geometry[SIERPINSKI_TRIANGLE])))
     {
     	cout << "Program failed to initialize geometry, TERMINATING" << endl;
     	return -2;
-    }
+    }*/
 
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
@@ -343,6 +392,7 @@ int main(int argc, char *argv[])
     		poly_type = SQUARES_DIAMONDS;
     		break;
     	case PARAMETRIC_SPIRAL:
+    		InitializeParametricSpiral(&geometry[PARAMETRIC_SPIRAL], poly_iter);
     		poly_type = PARAMETRIC_SPIRAL;
     		break;
     	case SIERPINSKI_TRIANGLE:
@@ -350,7 +400,7 @@ int main(int argc, char *argv[])
     		break;
     	}
 
-    	RenderScene(&geometry[poly_type], &shader[poly_type], poly_iter);
+    	RenderScene(&geometry[poly_type], &shader[poly_type]);
 
         // scene is rendered to the back buffer, so swap to front for display
         glfwSwapBuffers(window);
