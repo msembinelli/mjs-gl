@@ -43,6 +43,9 @@ enum PolygonType
 PolygonType poly_type = SQUARES_DIAMONDS;
 GLuint poly_iter = 1;
 
+vector<GLfloat> vertices;
+vector<GLfloat> colours;
+
 // --------------------------------------------------------------------------
 // Structs
 struct MyShader
@@ -105,22 +108,20 @@ void DestroyShaders(MyShader *shader)
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL buffers for storing geometry data
 
-bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat[2]> *vertex_vec, vector<GLfloat[3]> *colour_vec)
+bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vector<GLfloat> *colour_vec)
 {
-	geometry->elementCount = vertex_vec->size();
-
 	GLuint VERTEX_INDEX = 0;
 	GLuint COLOUR_INDEX = 1;
 
 	// create an array buffer object for storing our vertices
 	glGenBuffers(1, &geometry->vertexBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
-	glBufferData(GL_ARRAY_BUFFER, geometry->elementCount*sizeof(vertex_vec->data()[0]), vertex_vec->data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertex_vec->size()*sizeof(GLfloat), vertex_vec->data(), GL_STATIC_DRAW);
 
 	// create another one for storing our colours
 	glGenBuffers(1, &geometry->colourBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
-	glBufferData(GL_ARRAY_BUFFER, geometry->elementCount*sizeof(colour_vec->data()[0]), colour_vec->data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, colour_vec->size()*sizeof(GLfloat), colour_vec->data(), GL_STATIC_DRAW);
 
 	// create a vertex array object encapsulating all our vertex attributes
 	glGenVertexArrays(1, &geometry->vertexArray);
@@ -144,7 +145,7 @@ bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat[2]> *vertex_vec, v
 
 bool InitializeSquaresAndDiamonds(MyGeometry *geometry)
 {
-	GLfloat sidelength = 1.0f;
+	GLfloat sidelength = 1.99f;
 	GLfloat vertex = sidelength/2.0f;
 
 	GLfloat vertices[][2] =
@@ -191,7 +192,8 @@ bool InitializeSquaresAndDiamonds(MyGeometry *geometry)
 	vector<GLfloat[2]> vertex_vec(vertices, vertices + sizeof(vertices) / sizeof(vertices[0]));
 	vector<GLfloat[3]> colour_vec(colours, colours + sizeof(colours) / sizeof(colours[0]));
 
-	return BindGeometryBuffers(geometry, &vertex_vec, &colour_vec);
+	//return BindGeometryBuffers(geometry, &vertex_vec, &colour_vec);
+	return true;
 }
 
 bool InitializeParametricSpiral(MyGeometry *geometry, GLuint iter = 1)
@@ -212,77 +214,78 @@ bool InitializeParametricSpiral(MyGeometry *geometry, GLuint iter = 1)
 	vector<GLfloat[2]> vertex_vec(vertices, vertices + sizeof(vertices) / sizeof(vertices[0]));
 	vector<GLfloat[3]> colour_vec(colours, colours + sizeof(colours) / sizeof(colours[0]));
 
-	return BindGeometryBuffers(geometry, &vertex_vec, &colour_vec);
+	//return BindGeometryBuffers(geometry, &vertex_vec, &colour_vec);
+	return true;
 }
 
-void DivideTriangle(vector<vector<GLfloat[2]> > *vertex_vec, GLfloat vertex_a[2], GLfloat vertex_b[2], GLfloat vertex_c[2], GLuint iter)
+void AddTriangle(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3)
 {
-	GLfloat new_vertex_a[2], new_vertex_b[2], new_vertex_c[2];
+	vertices.push_back(x1);
+	vertices.push_back(y1);
+
+	vertices.push_back(x2);
+	vertices.push_back(y2);
+
+	vertices.push_back(x3);
+	vertices.push_back(y3);
+
+}
+
+void AddColour(GLfloat r1, GLfloat g1, GLfloat b1, GLfloat r2, GLfloat g2, GLfloat b2, GLfloat r3, GLfloat g3, GLfloat b3)
+{
+	colours.push_back(r1);
+	colours.push_back(g1);
+	colours.push_back(b1);
+
+	colours.push_back(r2);
+	colours.push_back(g2);
+	colours.push_back(b2);
+
+	colours.push_back(r3);
+	colours.push_back(g3);
+	colours.push_back(b3);
+}
+
+void DivideTriangle(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3, GLuint iter)
+{
+	GLfloat new_x1, new_x2, new_x3, new_y1, new_y2, new_y3;
 	if(iter > 0)
 	{
-		for(GLuint j = 0; j < 2; j++){ new_vertex_a[j] = ((vertex_a[j] + vertex_b[j])/2.0); }
-		for(GLuint j = 0; j < 2; j++){ new_vertex_b[j] = ((vertex_a[j] + vertex_c[j])/2.0); }
-		for(GLuint j = 0; j < 2; j++){ new_vertex_c[j] = ((vertex_b[j] + vertex_c[j])/2.0); }
-		DivideTriangle(vertex_vec, vertex_a, new_vertex_a, new_vertex_b, iter - 1);
-		DivideTriangle(vertex_vec, vertex_c, new_vertex_c, new_vertex_b, iter - 1);
-		DivideTriangle(vertex_vec, vertex_b, new_vertex_c, new_vertex_a, iter - 1);
+		new_x1 = (x1 + x2)/2.0;
+		new_y1 = (y1 + y2)/2.0;
+
+		new_x2 = (x1 + x3)/2.0;
+		new_y2 = (y1 + y3)/2.0;
+
+		new_x3 = (x2 + x3)/2.0;
+		new_y3 = (y2 + y3)/2.0;
+
+
+		DivideTriangle(x1, y1, new_x1, new_y1, new_x2, new_y2, iter - 1);
+		DivideTriangle(x3, y3, new_x3, new_y3, new_x2, new_y2, iter - 1);
+		DivideTriangle(x2, y2, new_x3, new_y3, new_x1, new_y1, iter - 1);
 	}
 	else
 	{
-		GLfloat vertices[][2] =
-		{
-				{vertex_a[0], vertex_a[1]},
-				{vertex_b[0], vertex_b[1]},
-				{vertex_c[0], vertex_c[1]}
-		};
-		vector<GLfloat[2]> vertex_vec_new(vertices, vertices + sizeof(vertices) / sizeof(vertices[0]));
-		vertex_vec->push_back(vertex_vec_new);
+		AddTriangle(x1, y1, x2, y2, x3, y3);
+		AddColour(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0);
 	}
 }
 
 bool InitializeSierpinskiTriangle(MyGeometry *geometry, GLuint iter = 1)
 {
-	GLfloat sidelength = 1.0f;
+	GLfloat sidelength = 1.99f;
 	GLfloat vertex = sidelength/2.0f;
 
-	// Add 3 as technically each subdivision of the triangle gives 4 triangles rather than 3
-	GLuint num_vertices = pow(3, iter + 1) + 3;
-
-	// These vectors store the final vertex data as a result of the recursion
-	vector<vector<GLfloat[2]> > tmp_vec;
-	vector<GLfloat[2]> vertex_vec;
-
-	// Base triangle data
-	GLfloat vertices[][2] =
-	{
-			{vertex, -vertex},
-			{   0.0,  vertex},
-			{-vertex, -vertex}
-	};
-
-	GLfloat colours[num_vertices][3];
-
-	for(GLuint i = 0; i < num_vertices; i++)
-	{
-		colours[i][0] = 0.0;
-		colours[i][1] = 0.0;
-		colours[i][2] = 1.0;
-	}
-
-	vector<GLfloat[3]> colour_vec(colours, colours + sizeof(colours) / sizeof(colours[0]));
+	AddTriangle(vertex, -vertex, 0.0, vertex*sin(M_PI/3), -vertex, -vertex);
+	AddColour(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0);
 
 	// Divide starting triangle recursively
-	DivideTriangle(&tmp_vec, vertices[0], vertices[1], vertices[2], iter);
-
-	// Concatenate all the vectors at the end to avoid data corruption that is possible during recursion
-	for(GLuint i = 0; i < tmp_vec.size(); i++)
-	{
-		vertex_vec.insert( vertex_vec.end(), tmp_vec.at(i).begin(), tmp_vec.at(i).end() );
-	}
+	DivideTriangle(vertex, -vertex, 0.0, vertex*sin(M_PI/3), -vertex, -vertex, iter);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-	return BindGeometryBuffers(geometry, &vertex_vec, &colour_vec);
+	return BindGeometryBuffers(geometry, &vertices, &colours);
 }
 
 // deallocate geometry-related objects
@@ -310,17 +313,20 @@ void RenderScene(MyGeometry *geometry, MyShader *shader)
 	switch(poly_type)
 	{
 	case SQUARES_DIAMONDS:
-		glDrawArraysInstanced(GL_LINES, 0, geometry->elementCount, poly_iter);
+		//glDrawArraysInstanced(GL_LINES, 0, geometry->elementCount, poly_iter);
 		break;
 
 	case PARAMETRIC_SPIRAL:
-		glDrawArrays(GL_LINE_STRIP, 0, geometry->elementCount);
+		//glDrawArrays(GL_LINE_STRIP, 0, geometry->elementCount);
 		break;
 
 	case SIERPINSKI_TRIANGLE:
 		glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
 		break;
 	}
+
+	vertices.clear();
+	colours.clear();
 
 	// reset state to default (no shader or geometry bound)
 	glBindVertexArray(0);
@@ -378,6 +384,12 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		case GLFW_KEY_6:
 			poly_iter = 6;
 			break;
+		case GLFW_KEY_UP:
+			poly_iter++;
+			break;
+		case GLFW_KEY_DOWN:
+			poly_iter--;
+			break;
 		case GLFW_KEY_ESCAPE:
 			glfwSetWindowShouldClose(window, GL_TRUE);
 			break;
@@ -425,9 +437,9 @@ int main(int argc, char *argv[])
 	MyGeometry geometry[3];
 
 	InitializeShaders(&shader[SQUARES_DIAMONDS], "vertex_sd.glsl", "fragment.glsl");
-	InitializeSquaresAndDiamonds(&geometry[SQUARES_DIAMONDS]);
+	//InitializeSquaresAndDiamonds(&geometry[SQUARES_DIAMONDS]);
 	InitializeShaders(&shader[PARAMETRIC_SPIRAL], "vertex_ps.glsl", "fragment.glsl");
-	InitializeParametricSpiral(&geometry[PARAMETRIC_SPIRAL]);
+	//InitializeParametricSpiral(&geometry[PARAMETRIC_SPIRAL]);
 	InitializeShaders(&shader[SIERPINSKI_TRIANGLE], "vertex_st.glsl", "fragment.glsl");
 	InitializeSierpinskiTriangle(&geometry[SIERPINSKI_TRIANGLE]);
 
@@ -441,7 +453,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case PARAMETRIC_SPIRAL:
-			InitializeParametricSpiral(&geometry[PARAMETRIC_SPIRAL], poly_iter);
+			//InitializeParametricSpiral(&geometry[PARAMETRIC_SPIRAL], poly_iter);
 			poly_type = PARAMETRIC_SPIRAL;
 			break;
 
