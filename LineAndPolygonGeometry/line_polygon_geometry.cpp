@@ -48,6 +48,7 @@ vector<GLfloat> colours;
 
 // --------------------------------------------------------------------------
 // Structs
+
 struct MyShader
 {
 	// OpenGL names for vertex and fragment shaders, shader program
@@ -347,24 +348,6 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		case GLFW_KEY_F3:
 			poly_type = SIERPINSKI_TRIANGLE;
 			poly_iter = 1;
-			break;
-		case GLFW_KEY_1:
-			poly_iter = 1;
-			break;
-		case GLFW_KEY_2:
-			poly_iter = 2;
-			break;
-		case GLFW_KEY_3:
-			poly_iter = 3;
-			break;
-		case GLFW_KEY_4:
-			poly_iter = 4;
-			break;
-		case GLFW_KEY_5:
-			poly_iter = 5;
-			break;
-		case GLFW_KEY_6:
-			poly_iter = 6;
 			break;
 		case GLFW_KEY_UP:
 			poly_iter++;
