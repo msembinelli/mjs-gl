@@ -3,18 +3,31 @@ CPSC453 Assignment 1 - Line and Polygon Geometry
 Matthew Sembinelli
 10085613
 mjsembin@ucalgary.ca
-=====================================================
+
 January 28, 2016
-
-
-How To Run
 =====================================================
-Build with g++
 
+
+Files Included
+=====================================================
+line_polygon_geometry.cpp
+vertex.glsl
+vertex_sd.glsl
+fragment.glsl
+=====================================================
+
+
+How To Compile And Run
+=====================================================
+Build with g++:
 g++ line_polygon_geometry.cpp -lglfw -lGL -ldl -o Assignment1
 
-Requires GLFW and OpenGL 4
+Run with:
+./Assignment1
+
+*Requires gcc/g++, GLFW and OpenGL 4
 =====================================================
+
 
 How To Use
 =====================================================
@@ -27,6 +40,7 @@ DOWN (arrow down) - Decrease the number of iterations
 
 ESC - Exit program
 =====================================================
+
 
 Extra Information
 =====================================================
