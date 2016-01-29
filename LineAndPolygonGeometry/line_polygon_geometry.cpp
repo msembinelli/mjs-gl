@@ -5,7 +5,7 @@
 // http://pages.cpsc.ucalgary.ca/~sonny.chan/cpsc453/resources/handouts/CPSC453-BoilerplateCode.zip
 //
 // Author:  Matthew Sembinelli, University of Calgary
-// Date:    January 17, 2015
+// Date:    January 17, 2016
 // ==========================================================================
 
 #include <iostream>
