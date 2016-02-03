@@ -6,8 +6,11 @@
 // ==========================================================================
 #version 410
 
+uniform sampler2DRect texture;
+
 // interpolated colour received from vertex stage
 in vec3 Colour;
+in vec2 textureCoords;
 
 // first output is mapped to the framebuffer's colour index by default
 out vec4 FragmentColour;
@@ -15,5 +18,5 @@ out vec4 FragmentColour;
 void main(void)
 {
     // write colour output without modification
-    FragmentColour = vec4(Colour,1);
+    FragmentColour = texture2DRect(texture, textureCoords);
 }

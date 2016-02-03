@@ -167,6 +167,7 @@ struct MyGeometry
     // OpenGL names for array buffer objects, vertex array object
     GLuint  vertexBuffer;
     GLuint  colourBuffer;
+    GLuint  textureCoordBuffer;
     GLuint  vertexArray;
     GLsizei elementCount;
 
@@ -193,6 +194,11 @@ bool InitializeGeometry(MyGeometry *geometry, MyTexture *texture)
     //-------------------
     // Add array of texture coordinates
     //-------------------
+    const GLuint textureCoords[][2] = {
+    		{0, texture->height},
+			{texture->width, texture->height},
+			{texture->width / 2.0, 0}
+    };
 
     geometry->elementCount = 3;
 
@@ -200,6 +206,7 @@ bool InitializeGeometry(MyGeometry *geometry, MyTexture *texture)
     // input variables in the vertex shader
     const GLuint VERTEX_INDEX = 0;
     const GLuint COLOUR_INDEX = 1;
+    const GLuint TEXTURE_INDEX = 2;
 
     //-----------
     // add texture index
@@ -218,6 +225,10 @@ bool InitializeGeometry(MyGeometry *geometry, MyTexture *texture)
     //-------------------------
     // generate bind and buffer texture coordinate data
     //-------------------------
+    glGenBuffers(1, &geometry->textureCoordBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, geometry->textureCoordBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(textureCoords), textureCoords, GL_STATIC_DRAW);
+
 
     // create a vertex array object encapsulating all our vertex attributes
     glGenVertexArrays(1, &geometry->vertexArray);
@@ -236,6 +247,9 @@ bool InitializeGeometry(MyGeometry *geometry, MyTexture *texture)
     //-----------------
     // Set up vertex attribute info for textures
     //-----------------
+    glBindBuffer(GL_ARRAY_BUFFER, geometry->textureCoordBuffer);
+    glVertexAttribPointer(TEXTURE_INDEX, 2, GL_UNSIGNED_INT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(TEXTURE_INDEX);
 
     // unbind our buffers, resetting to default state
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -268,10 +282,12 @@ void RenderScene(MyGeometry *geometry, MyTexture* texture, MyShader *shader)
     // scene geometry, then tell OpenGL to draw our geometry
     glUseProgram(shader->program);
     glBindVertexArray(geometry->vertexArray);
+    glBindTexture(GL_TEXTURE_RECTANGLE, texture->textureName);
 
     glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
 
     // reset state to default (no shader or geometry bound)
+    glBindTexture(GL_TEXTURE_RECTANGLE, 0);
     glBindVertexArray(0);
     glUseProgram(0);
 
