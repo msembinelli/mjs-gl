@@ -15,6 +15,7 @@
 #include <string>
 #include <iterator>
 #include <algorithm>
+#include <math.h>
 
 // specify that we want the OpenGL core profile before including GLFW headers
 #define GLFW_INCLUDE_GLCOREARB
@@ -61,6 +62,32 @@ enum ImageType
 };
 
 ImageType image_type = MANDRILL;
+
+struct Transformation
+{
+    GLfloat  x;
+    GLfloat  y;
+    GLfloat  scale;
+    GLfloat  rotation;
+
+    // initialize object names to zero (OpenGL reserved value)
+    Transformation() : x(0), y(0), scale(1.0), rotation(0)
+    {}
+};
+
+struct ImageColour
+{
+    GLfloat  r;
+    GLfloat  g;
+    GLfloat  b;
+
+    // initialize object names to zero (OpenGL reserved value)
+    ImageColour() : r(0), g(0), b(0)
+    {}
+};
+
+Transformation transformation;
+ImageColour colour;
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL objects for storing image data
@@ -321,7 +348,8 @@ void RenderScene(MyGeometry *geometry, MyTexture* texture, MyShader *shader)
     glUseProgram(shader->program);
     glBindVertexArray(geometry->vertexArray);
     glBindTexture(GL_TEXTURE_RECTANGLE, texture->textureName);
-
+    glUniform4f(glGetUniformLocation(shader->program, "transformation_data"), transformation.x, transformation.y, transformation.scale, transformation.rotation);
+    glUniform3f(glGetUniformLocation(shader->program, "colour_data"), colour.r, colour.g, colour.b);
     glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
 
     // reset state to default (no shader or geometry bound)
@@ -368,10 +396,37 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		case GLFW_KEY_5:
 			image_type = PATTERN;
 			break;
+		case GLFW_KEY_LEFT:
+			transformation.rotation -= M_PI/12.0;
+			break;
+		case GLFW_KEY_RIGHT:
+			transformation.rotation += M_PI/12.0;
+			break;
+		case GLFW_KEY_F1:
+			colour.r = 1.0;
+			colour.g = 1.0;
+			colour.b = 1.0;
+			break;
+		case GLFW_KEY_F2:
+			colour.r = 0.333;
+			colour.g = 0.333;
+			colour.b = 0.333;
+			break;
+		case GLFW_KEY_F3:
+			colour.r = 0.299;
+			colour.g = 0.587;
+			colour.b = 0.114;
+			break;
+		case GLFW_KEY_F4:
+			colour.r = 0.222;
+			colour.g = 0.715;
+			colour.b = 0.072;
+			break;
 		}
 	}
 }
 
+bool pressed = false;
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
 	if(button == GLFW_MOUSE_BUTTON_1)
@@ -380,17 +435,36 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 		if(action == GLFW_PRESS)
 		{
 			cout << "pressed" << endl;
+			pressed = true;
 		}
 		else if(action == GLFW_RELEASE)
 		{
 			cout << "released" << endl;
+			pressed = false;
 		}
 	}
 }
-
+GLfloat last_x = 0;
+GLfloat last_y = 0;
 void mouseMoveCallback(GLFWwindow* window, double x, double y)
 {
 	cout << "x " << x << " y " << y << endl;
+	if(pressed)
+	{ //TODO this is broken
+	    transformation.x = (x)/512.0 - last_x;
+	    transformation.y = -(y)/512.0 - last_y;
+	    last_x = transformation.x;
+	    last_y = transformation.y;
+	}
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	cout << "x offset" << xoffset << " y offset" << yoffset << endl;
+	if(yoffset == 1)
+		transformation.scale += 0.05;
+	else if (yoffset == -1)
+		transformation.scale -= 0.05;
 }
 
 // ==========================================================================
@@ -424,6 +498,7 @@ int main(int argc, char *argv[])
     glfwSetKeyCallback(window, KeyCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
     glfwSetCursorPosCallback(window, mouseMoveCallback);
+    glfwSetScrollCallback(window, scroll_callback);
     glfwMakeContextCurrent(window);
 
     // set mouse call back functions
