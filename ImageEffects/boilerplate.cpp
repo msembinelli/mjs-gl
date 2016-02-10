@@ -49,6 +49,19 @@ GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader);
 // Date:    January 2016
 // ==========================================================================
 
+// Enum to keep track of current image
+enum ImageType
+{
+	MANDRILL,
+	UCLOGO,
+	AERIAL,
+	THIRSK,
+	PATTERN,
+	IMAGETYPE_MAX
+};
+
+ImageType image_type = MANDRILL;
+
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL objects for storing image data
 
@@ -172,45 +185,74 @@ struct MyGeometry
     GLsizei elementCount;
 
     // initialize object names to zero (OpenGL reserved value)
-    MyGeometry() : vertexBuffer(0), colourBuffer(0), vertexArray(0), elementCount(0)
+    MyGeometry() : vertexBuffer(0), colourBuffer(0), textureCoordBuffer(0), vertexArray(0), elementCount(0)
     {}
 };
 
 // create buffers and fill with geometry data, returning true if successful
 bool InitializeGeometry(MyGeometry *geometry, MyTexture *texture)
 {
-    // three vertex positions and assocated colours of a triangle
+	GLfloat x_max = 0;
+	GLfloat y_max = 0;
+	GLfloat x_min = 0;
+	GLfloat y_min = 0;
+
+	if(texture->width > texture->height)
+	{
+		y_max = (texture->height/float(texture->width));
+		y_min = -(texture->height/float(texture->width));
+		x_max = 1.0;
+		x_min = -1.0;
+	}
+	else if(texture->width < texture->height)
+	{
+		x_max = (texture->width/float(texture->height));
+		x_min = -(texture->width/float(texture->height));
+		y_max = 1.0;
+		y_min = -1.0;
+	}
+	else
+	{
+		y_max = 1.0;
+		y_min = -1.0;
+		x_max = 1.0;
+		x_min = -1.0;
+	}
+
+    // associated vertices based on image aspect ratio
     const GLfloat vertices[][2] = {
-        { -0.6, -0.4 },
-        {  0.6, -0.4 },
-        {  0.0,  0.6 }
+        { x_min, y_min },
+        { x_max, y_min },
+        { x_min, y_max },
+        { x_min, y_max },
+        { x_max, y_max },
+        { x_max, y_min }
     };
     const GLfloat colours[][3] = {
+        { 1.0, 0.0, 0.0 },
+        { 0.0, 1.0, 0.0 },
+        { 0.0, 0.0, 1.0 },
         { 1.0, 0.0, 0.0 },
         { 0.0, 1.0, 0.0 },
         { 0.0, 0.0, 1.0 }
     };
 
-    //-------------------
-    // Add array of texture coordinates
-    //-------------------
     const GLuint textureCoords[][2] = {
     		{0, texture->height},
 			{texture->width, texture->height},
-			{texture->width / 2.0, 0}
+			{0, 0},
+			{0, 0},
+			{texture->width, 0},
+    		{texture->width, texture->height}
     };
 
-    geometry->elementCount = 3;
+    geometry->elementCount = 6;
 
     // these vertex attribute indices correspond to those specified for the
     // input variables in the vertex shader
     const GLuint VERTEX_INDEX = 0;
     const GLuint COLOUR_INDEX = 1;
     const GLuint TEXTURE_INDEX = 2;
-
-    //-----------
-    // add texture index
-    //-----------
 
     // create an array buffer object for storing our vertices
     glGenBuffers(1, &geometry->vertexBuffer);
@@ -222,9 +264,7 @@ bool InitializeGeometry(MyGeometry *geometry, MyTexture *texture)
     glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(colours), colours, GL_STATIC_DRAW);
 
-    //-------------------------
-    // generate bind and buffer texture coordinate data
-    //-------------------------
+    // Buffer for storing texture
     glGenBuffers(1, &geometry->textureCoordBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, geometry->textureCoordBuffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(textureCoords), textureCoords, GL_STATIC_DRAW);
@@ -244,9 +284,7 @@ bool InitializeGeometry(MyGeometry *geometry, MyTexture *texture)
     glVertexAttribPointer(COLOUR_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(COLOUR_INDEX);
 
-    //-----------------
     // Set up vertex attribute info for textures
-    //-----------------
     glBindBuffer(GL_ARRAY_BUFFER, geometry->textureCoordBuffer);
     glVertexAttribPointer(TEXTURE_INDEX, 2, GL_UNSIGNED_INT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(TEXTURE_INDEX);
@@ -310,6 +348,28 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
+
+	if (action == GLFW_PRESS)
+	{
+		switch(key)
+		{
+		case GLFW_KEY_1:
+			image_type = MANDRILL;
+			break;
+		case GLFW_KEY_2:
+			image_type = UCLOGO;
+			break;
+		case GLFW_KEY_3:
+			image_type = AERIAL;
+			break;
+		case GLFW_KEY_4:
+			image_type = THIRSK;
+			break;
+		case GLFW_KEY_5:
+			image_type = PATTERN;
+			break;
+		}
+	}
 }
 
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
@@ -353,7 +413,7 @@ int main(int argc, char *argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    window = glfwCreateWindow(512, 512, "CPSC 453 OpenGL Boilerplate", 0, 0);
+    window = glfwCreateWindow(512, 512, "CPSC 453 OpenGL Assignment 2", 0, 0);
     if (!window) {
         cout << "Program failed to create GLFW window, TERMINATING" << endl;
         glfwTerminate();
@@ -379,20 +439,45 @@ int main(int argc, char *argv[])
     }
 
     // load and initialize the texture
-    MyTexture texture;
-    if(!InitializeTexture(&texture, "test.jpg"))
+    MyTexture textures[IMAGETYPE_MAX];
+
+    if(!InitializeTexture(&textures[MANDRILL], "image1-mandrill.png"))
+        cout << "Failed to load texture!" << endl;
+
+    if(!InitializeTexture(&textures[UCLOGO], "image2-uclogo.png"))
+        cout << "Failed to load texture!" << endl;
+
+    if(!InitializeTexture(&textures[AERIAL], "image3-aerial.jpg"))
+        cout << "Failed to load texture!" << endl;
+
+    if(!InitializeTexture(&textures[THIRSK], "image4-thirsk.jpg"))
+        cout << "Failed to load texture!" << endl;
+
+    if(!InitializeTexture(&textures[PATTERN], "image5-pattern.png"))
         cout << "Failed to load texture!" << endl;
 
     // call function to create and fill buffers with geometry data
-    MyGeometry geometry;
-    if (!InitializeGeometry(&geometry, &texture))
+    MyGeometry geometries[IMAGETYPE_MAX];
+    if (!InitializeGeometry(&geometries[MANDRILL], &textures[MANDRILL]))
+        cout << "Program failed to intialize geometry!" << endl;
+
+    if (!InitializeGeometry(&geometries[UCLOGO], &textures[UCLOGO]))
+        cout << "Program failed to intialize geometry!" << endl;
+
+    if (!InitializeGeometry(&geometries[AERIAL], &textures[AERIAL]))
+        cout << "Program failed to intialize geometry!" << endl;
+
+    if (!InitializeGeometry(&geometries[THIRSK], &textures[THIRSK]))
+        cout << "Program failed to intialize geometry!" << endl;
+
+    if (!InitializeGeometry(&geometries[PATTERN], &textures[PATTERN]))
         cout << "Program failed to intialize geometry!" << endl;
 
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
     {
         // call function to draw our scene
-        RenderScene(&geometry, &texture, &shader);
+        RenderScene(&geometries[image_type], &textures[image_type], &shader);
 
         // scene is rendered to the back buffer, so swap to front for display
         glfwSwapBuffers(window);
@@ -402,7 +487,10 @@ int main(int argc, char *argv[])
     }
 
     // clean up allocated resources before exit
-    DestroyGeometry(&geometry);
+    for(GLuint i = 0; i < IMAGETYPE_MAX; i++)
+    {
+        DestroyGeometry(&geometries[i]);
+    }
     DestroyShaders(&shader);
     glfwDestroyWindow(window);
     glfwTerminate();
