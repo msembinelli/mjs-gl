@@ -82,7 +82,7 @@ struct ImageColour
     GLfloat  b;
 
     // initialize object names to zero (OpenGL reserved value)
-    ImageColour() : r(0), g(0), b(0)
+    ImageColour() : r(1.0), g(1.0), b(1.0)
     {}
 };
 
@@ -397,10 +397,16 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 			image_type = PATTERN;
 			break;
 		case GLFW_KEY_LEFT:
-			transformation.rotation -= M_PI/12.0;
+			transformation.rotation += M_PI/12.0;
 			break;
 		case GLFW_KEY_RIGHT:
-			transformation.rotation += M_PI/12.0;
+			transformation.rotation -= M_PI/12.0;
+			break;
+		case GLFW_KEY_UP:
+			transformation.scale += 0.05;
+			break;
+		case GLFW_KEY_DOWN:
+			transformation.scale -= 0.05;
 			break;
 		case GLFW_KEY_F1:
 			colour.r = 1.0;
@@ -434,36 +440,29 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 		cout << "left ";
 		if(action == GLFW_PRESS)
 		{
-			cout << "pressed" << endl;
 			pressed = true;
 		}
 		else if(action == GLFW_RELEASE)
 		{
-			cout << "released" << endl;
 			pressed = false;
 		}
 	}
 }
-GLfloat last_x = 0;
-GLfloat last_y = 0;
+
 void mouseMoveCallback(GLFWwindow* window, double x, double y)
 {
-	cout << "x " << x << " y " << y << endl;
 	if(pressed)
-	{ //TODO this is broken
-	    transformation.x = (x)/512.0 - last_x;
-	    transformation.y = -(y)/512.0 - last_y;
-	    last_x = transformation.x;
-	    last_y = transformation.y;
+	{
+	    transformation.x = ((x)/512.0*2) - 1;
+	    transformation.y = 1 - ((y)/512.0*2);
 	}
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	cout << "x offset" << xoffset << " y offset" << yoffset << endl;
 	if(yoffset == 1)
 		transformation.scale += 0.05;
-	else if (yoffset == -1)
+	else if (yoffset == -1 && transformation.scale >= 0.0)
 		transformation.scale -= 0.05;
 }
 

@@ -7,6 +7,7 @@
 #version 410
 
 uniform sampler2DRect texture;
+uniform vec3 colour_data;
 
 // interpolated colour received from vertex stage
 in vec3 Colour;
@@ -18,5 +19,16 @@ out vec4 FragmentColour;
 void main(void)
 {
     // write colour output without modification
-    FragmentColour = texture2DRect(texture, textureCoords);
+    if(colour_data[0] == 1.0)
+    {
+        FragmentColour = texture2DRect(texture, textureCoords);
+    }
+    else
+    {
+        vec4 TextureColour = texture2DRect(texture, textureCoords);
+         
+        float luminance = colour_data[0]*TextureColour[0] + colour_data[1]*TextureColour[1] + colour_data[2]*TextureColour[2];
+         
+        FragmentColour = vec4(luminance, luminance, luminance, 0);
+    }
 }
