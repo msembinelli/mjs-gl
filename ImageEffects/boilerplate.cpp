@@ -20,6 +20,8 @@
 // specify that we want the OpenGL core profile before including GLFW headers
 #define GLFW_INCLUDE_GLCOREARB
 #define GL_GLEXT_PROTOTYPES
+#define WINDOW_WIDTH 512
+#define WINDOW_HEIGHT 512
 #include <GLFW/glfw3.h>
 #include <Magick++.h>
 
@@ -58,6 +60,7 @@ enum ImageType
 	AERIAL,
 	THIRSK,
 	PATTERN,
+	CAPSTONE,
 	IMAGETYPE_MAX
 };
 
@@ -396,6 +399,9 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		case GLFW_KEY_5:
 			image_type = PATTERN;
 			break;
+		case GLFW_KEY_6:
+			image_type = CAPSTONE;
+			break;
 		case GLFW_KEY_LEFT:
 			transformation.rotation += M_PI/12.0;
 			break;
@@ -437,7 +443,6 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
 	if(button == GLFW_MOUSE_BUTTON_1)
 	{
-		cout << "left ";
 		if(action == GLFW_PRESS)
 		{
 			pressed = true;
@@ -453,8 +458,8 @@ void mouseMoveCallback(GLFWwindow* window, double x, double y)
 {
 	if(pressed)
 	{
-	    transformation.x = ((x)/512.0*2) - 1;
-	    transformation.y = 1 - ((y)/512.0*2);
+	    transformation.x = ((x)/float(WINDOW_WIDTH)*2) - 1;
+	    transformation.y = 1 - ((y)/float(WINDOW_HEIGHT)*2);
 	}
 }
 
@@ -486,7 +491,7 @@ int main(int argc, char *argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    window = glfwCreateWindow(512, 512, "CPSC 453 OpenGL Assignment 2", 0, 0);
+    window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "CPSC 453 OpenGL Assignment 2", 0, 0);
     if (!window) {
         cout << "Program failed to create GLFW window, TERMINATING" << endl;
         glfwTerminate();
@@ -529,6 +534,9 @@ int main(int argc, char *argv[])
 
     if(!InitializeTexture(&textures[PATTERN], "image5-pattern.png"))
         cout << "Failed to load texture!" << endl;
+	
+    if(!InitializeTexture(&textures[PATTERN], "image6-capstone.jpeg"))
+        cout << "Failed to load texture!" << endl;
 
     // call function to create and fill buffers with geometry data
     MyGeometry geometries[IMAGETYPE_MAX];
@@ -545,6 +553,9 @@ int main(int argc, char *argv[])
         cout << "Program failed to intialize geometry!" << endl;
 
     if (!InitializeGeometry(&geometries[PATTERN], &textures[PATTERN]))
+        cout << "Program failed to intialize geometry!" << endl;
+	
+    if (!InitializeGeometry(&geometries[CAPSTONE], &textures[CAPSTONE]))
         cout << "Program failed to intialize geometry!" << endl;
 
     // run an event-triggered main loop
