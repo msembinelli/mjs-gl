@@ -24,6 +24,7 @@
 #define WINDOW_HEIGHT 512
 #include <GLFW/glfw3.h>
 #include <Magick++.h>
+#include <glm/glm.hpp>
 
 using namespace std;
 
@@ -78,19 +79,21 @@ struct Transformation
     {}
 };
 
-struct ImageColour
-{
-    GLfloat  r;
-    GLfloat  g;
-    GLfloat  b;
-
-    // initialize object names to zero (OpenGL reserved value)
-    ImageColour() : r(1.0), g(1.0), b(1.0)
-    {}
-};
+//struct ImageColour
+//{
+//    GLfloat  r;
+//    GLfloat  g;
+//    GLfloat  b;
+//	ColourEffect effect;
+//
+//    // initialize object names to zero (OpenGL reserved value)
+//    ImageColour() : r(1.0), g(1.0), b(1.0), effect(STANDARD)
+//    {}
+//};
 
 Transformation transformation;
-ImageColour colour;
+//ImageColour colour;
+glm::mat3 colour_effects = glm::mat3();
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL objects for storing image data
@@ -352,7 +355,8 @@ void RenderScene(MyGeometry *geometry, MyTexture* texture, MyShader *shader)
     glBindVertexArray(geometry->vertexArray);
     glBindTexture(GL_TEXTURE_RECTANGLE, texture->textureName);
     glUniform4f(glGetUniformLocation(shader->program, "transformation_data"), transformation.x, transformation.y, transformation.scale, transformation.rotation);
-    glUniform3f(glGetUniformLocation(shader->program, "colour_data"), colour.r, colour.g, colour.b);
+    //glUniform3f(glGetUniformLocation(shader->program, "colour_data"), colour.r, colour.g, colour.b);
+    glUniformMatrix3fv(glGetUniformLocation(shader->program, "colour_data"), 1, GL_FALSE, &colour_effects[0][0]);
     glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
 
     // reset state to default (no shader or geometry bound)
@@ -415,25 +419,47 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 			transformation.scale -= 0.05;
 			break;
 		case GLFW_KEY_F1:
-			colour.r = 1.0;
-			colour.g = 1.0;
-			colour.b = 1.0;
+		    colour_effects = glm::mat3();
+			//colour.r = 1.0;
+			//colour.g = 1.0;
+			//colour.b = 1.0;
+			//colour.effect = STANDARD;
 			break;
 		case GLFW_KEY_F2:
-			colour.r = 0.333;
-			colour.g = 0.333;
-			colour.b = 0.333;
+		    colour_effects = glm::mat3() * 0.333;
+			//colour.r = 0.333;
+			//colour.g = 0.333;
+			//colour.b = 0.333;
+			//colour.effect = GREYSCALE;
 			break;
 		case GLFW_KEY_F3:
-			colour.r = 0.299;
-			colour.g = 0.587;
-			colour.b = 0.114;
+		    colour_effects[0] = glm::mat3()[0] * 0.299;
+			colour_effects[1] = glm::mat3()[1] * 0.587;
+			colour_effects[2] = glm::mat3()[2] * 0.114;
+			//colour.r = 0.299;
+			//colour.g = 0.587;
+			//colour.b = 0.114;
+			//colour.effect = GREYSCALE;
 			break;
 		case GLFW_KEY_F4:
-			colour.r = 0.222;
-			colour.g = 0.715;
-			colour.b = 0.072;
+		    colour_effects[0] = glm::mat3()[0] * 0.222;
+			colour_effects[1] = glm::mat3()[1] * 0.715;
+			colour_effects[2] = glm::mat3()[2] * 0.072;
+			//colour.r = 0.222;
+			//colour.g = 0.715;
+			//colour.b = 0.072;
+			//colour.effect = GREYSCALE;
 			break;
+        case GLFW_KEY_F5:
+			colour_effects[0] = glm::vec3(0.393, 0.769, 0.189);
+			colour_effects[1] = glm::vec3(0.349, 0.686, 0.168);
+			colour_effects[2] = glm::vec3(0.272, 0.534, 0.131);
+		    //colour.r = 0.1;
+			//colour.g = 0.1;
+			//colour.b = 0.1;
+			//colour.effect = CUSTOM;
+		    break;
+
 		}
 	}
 }

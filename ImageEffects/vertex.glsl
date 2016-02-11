@@ -22,8 +22,7 @@ void main()
     mat2 rotation = mat2(cos(transformation_data[3]), sin(transformation_data[3]), -sin(transformation_data[3]), cos(transformation_data[3]));
     vec2 TmpVertexPosition = rotation * VertexPosition;
     TmpVertexPosition *= transformation_data[2];
-    TmpVertexPosition[0] += transformation_data[0];
-    TmpVertexPosition[1] += transformation_data[1];
+    TmpVertexPosition += vec2(transformation_data[0], transformation_data[1]);
     
     // assign vertex position without modification
     gl_Position = vec4(TmpVertexPosition, 0.0, 1.0);
