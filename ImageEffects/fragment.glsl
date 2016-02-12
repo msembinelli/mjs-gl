@@ -18,10 +18,10 @@ out vec4 FragmentColour;
 
 void main(void)
 {
-    vec4 TextureColour = texture2DRect(texture, textureCoords)
+    vec4 TextureColour = texture2DRect(texture, textureCoords);
 	
     // Apply colour effect from input matrix
-    vec3 TmpColours = vec3(dot(TextureColour, vec3(colour_data[0])), dot(TextureColour, vec3(colour_data[1])), dot(TextureColour, vec3(colour_data[2])))
+    vec3 TmpColours = vec3(dot(TextureColour, vec4(vec3(colour_data[0]), 0)), dot(TextureColour, vec4(vec3(colour_data[1]), 0)), dot(TextureColour, vec4(vec3(colour_data[2]), 0)));
 
     // write colour output without modification
     FragmentColour = vec4(TmpColours, 0);
