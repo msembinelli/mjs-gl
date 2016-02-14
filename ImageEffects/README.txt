@@ -50,4 +50,5 @@ RIGHT - Rotate image right
 UP/SCROLL UP - Zoom in
 DOWN/SCROLL DOWN - Zoom out
 CLICK/HOLD/DRAG - Pan/move image
+SPACE - Image reset to default
 =====================================================
