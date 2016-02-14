@@ -67,6 +67,36 @@ enum ImageType
 
 ImageType image_type = MANDRILL;
 
+enum FilterType
+{
+    NO_FILTER,
+	VERTICAL_SOBEL,
+	HORIZONTAL_SOBEL,
+	UNSHARP_MASK,
+	GAUSSIAN,
+	FILTERTYPE_MAX
+};
+
+FilterType filter_type = NO_FILTER;
+
+GLint kernels[4][9] = {
+		{0, 0, 0, 0, 1, 0, 0, 0, 0},
+		{1, 0, -1, 2, 0, -2, 1, 0, -1},
+		{1, 2, 1, 0, 0, 0, -1, -2, -1},
+		{0, -1, 0, -1, 5, -1, 0, -1, 0}
+};
+
+enum GaussianType
+{
+    NO_GAUSSIAN = 0,
+	GAUSSIAN_3X3 = 3,
+	GAUSSIAN_5X5 = 5,
+	GAUSSIAN_7X7 = 7,
+	GAUSSIAN_MAX
+};
+
+GaussianType gaussian_type = NO_GAUSSIAN;
+
 struct Transformation
 {
     GLfloat  x;
@@ -79,8 +109,12 @@ struct Transformation
     {}
 };
 
+// Globals for input
 Transformation transformation;
 glm::mat3 colour_effects = glm::mat3();
+GLfloat gaussian_sigma = 1.5;
+bool reset_image = false;
+bool pressed = false;
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL objects for storing image data
@@ -343,6 +377,10 @@ void RenderScene(MyGeometry *geometry, MyTexture* texture, MyShader *shader)
     glBindTexture(GL_TEXTURE_RECTANGLE, texture->textureName);
     glUniform4f(glGetUniformLocation(shader->program, "transformation_data"), transformation.x, transformation.y, transformation.scale, transformation.rotation);
     glUniformMatrix3fv(glGetUniformLocation(shader->program, "colour_data"), 1, GL_FALSE, &colour_effects[0][0]);
+    glUniform1iv(glGetUniformLocation(shader->program, "kernel"), 9, kernels[filter_type]);
+    glUniform1ui(glGetUniformLocation(shader->program, "filter_type"), filter_type);
+    glUniform1ui(glGetUniformLocation(shader->program, "gaussian_points"), gaussian_type);
+    glUniform1f(glGetUniformLocation(shader->program, "sigma"), gaussian_sigma);
     glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
 
     // reset state to default (no shader or geometry bound)
@@ -421,12 +459,45 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 			colour_effects[1] = glm::vec3(0.349, 0.686, 0.168);
 			colour_effects[2] = glm::vec3(0.272, 0.534, 0.131);
 		    break;
+        case GLFW_KEY_F:
+            if(filter_type < GAUSSIAN - 1)
+        		filter_type = (FilterType)((int)filter_type + 1);
+        	else
+        	    filter_type = NO_FILTER;
+		    break;
+        case GLFW_KEY_G:
+        	filter_type = GAUSSIAN;
+        	if(gaussian_type == NO_GAUSSIAN)
+        	{
+        	    gaussian_type = GAUSSIAN_3X3;
+        	    gaussian_sigma = 2.0;
+        	}
+        	else
+        	{
+        		if(gaussian_type < GAUSSIAN_7X7)
+        		{
+        		    gaussian_type = (GaussianType)((int)gaussian_type + 2);
+        		    gaussian_sigma += 0.22;
+        		}
+        		else
+        		{
+        			filter_type = NO_FILTER;
+        		    gaussian_type = NO_GAUSSIAN;
+        		}
+        	}
+        	break;
+        case GLFW_KEY_SPACE:
+        	reset_image = true;
+        	colour_effects = glm::mat3(1.0);
+        	transformation.rotation = 0;
+        	transformation.scale = 1.0;
+        	filter_type = NO_FILTER;
+        	gaussian_type = NO_GAUSSIAN;
 
 		}
 	}
 }
 
-bool pressed = false;
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 {
 	if(button == GLFW_MOUSE_BUTTON_1)
@@ -549,6 +620,12 @@ int main(int argc, char *argv[])
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
     {
+    	if(reset_image) // reset current image
+    	{
+    	    if (!InitializeGeometry(&geometries[image_type], &textures[image_type]))
+    	        cout << "Program failed to reintialize geometry!" << endl;
+    	    reset_image = false;
+    	}
         // call function to draw our scene
         RenderScene(&geometries[image_type], &textures[image_type], &shader);
 
