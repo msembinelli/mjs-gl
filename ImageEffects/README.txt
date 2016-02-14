@@ -52,3 +52,9 @@ DOWN/SCROLL DOWN - Zoom out
 CLICK/HOLD/DRAG - Pan/move image
 SPACE - Image reset to default
 =====================================================
+
+EXTRA INFO
+=====================================================
+- Will be utilizing one late day for this assignment
+=====================================================
+
