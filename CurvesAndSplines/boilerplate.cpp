@@ -34,7 +34,7 @@ bool CheckGLErrors();
 string shaderPath = "shaders/";
 string LoadSource(const string &filename);
 GLuint CompileShader(GLenum shaderType, const string &source);
-GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader);
+GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader, GLuint controlShader, GLuint evalShader);
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL shader programs for rendering
 
@@ -43,11 +43,12 @@ struct MyShader
     // OpenGL names for vertex and fragment shaders, shader program
     GLuint  vertex;
     GLuint  fragment;
-    //***add tessellation shaders
+    GLuint  tessEval;
+    GLuint  tessControl;
     GLuint  program;
 
     // initialize shader and program names to zero (OpenGL reserved value)
-    MyShader() : vertex(0), fragment(0), program(0)
+    MyShader() : vertex(0), fragment(0), tessEval(0), tessControl(0), program(0)
     {}
 };
 
@@ -57,17 +58,19 @@ bool InitializeShaders(MyShader *shader)
     // load shader source from files
     string vertexSource = LoadSource(shaderPath + "vertex.glsl");
     string fragmentSource = LoadSource(shaderPath + "fragment.glsl");
-    //***load tessel/ation shaders
+    string tessEvalSource = LoadSource(shaderPath + "tess_eval.glsl");
+    string tessControlSource = LoadSource(shaderPath + "tess_control.glsl");
 
-    if (vertexSource.empty() || fragmentSource.empty()) return false;
+    if (vertexSource.empty() || fragmentSource.empty() || tessEvalSource.empty() || tessControlSource.empty()) return false;
 
     // compile shader source into shader objects
     shader->vertex = CompileShader(GL_VERTEX_SHADER, vertexSource);
     shader->fragment = CompileShader(GL_FRAGMENT_SHADER, fragmentSource);
-    //***compile tessellation shaders
+    shader->tessEval = CompileShader(GL_TESS_EVALUATION_SHADER, tessEvalSource);
+    shader->tessControl = CompileShader(GL_TESS_CONTROL_SHADER, tessControlSource);
 
     // link shader program
-    shader->program = LinkProgram(shader->vertex, shader->fragment/*Link tessellation shaders*/);
+    shader->program = LinkProgram(shader->vertex, shader->fragment, shader->tessControl, shader->tessEval);
 
     // check for OpenGL errors and return false if error occurred
     return !CheckGLErrors();
@@ -81,6 +84,8 @@ void DestroyShaders(MyShader *shader)
     glDeleteProgram(shader->program);
     glDeleteShader(shader->vertex);
     glDeleteShader(shader->fragment);
+    glDeleteShader(shader->tessEval);
+    glDeleteShader(shader->tessControl);
 }
 
 // --------------------------------------------------------------------------
@@ -373,7 +378,7 @@ GLuint CompileShader(GLenum shaderType, const string &source)
 }
 
 // creates and returns a program object linked from vertex and fragment shaders
-GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader)
+GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader, GLuint controlShader, GLuint evalShader)
 {
     // allocate program object name
     GLuint programObject = glCreateProgram();
@@ -381,7 +386,8 @@ GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader)
     // attach provided shader objects to this program
     if (vertexShader)   glAttachShader(programObject, vertexShader);
     if (fragmentShader) glAttachShader(programObject, fragmentShader);
-    //***attach tessellation shaders
+    if (controlShader)  glAttachShader(programObject, controlShader);
+    if (evalShader)  glAttachShader(programObject, evalShader);
 
     // try linking the program with given attachments
     glLinkProgram(programObject);
