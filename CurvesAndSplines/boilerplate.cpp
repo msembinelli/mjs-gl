@@ -153,7 +153,7 @@ bool InitializeGeometry(MyGeometry *geometry)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-    //***set patch size
+    glPatchParameteri(GL_PATCH_VERTICES, 3);
 
     // check for OpenGL errors and return false if error occurred
     return !CheckGLErrors();
@@ -183,7 +183,7 @@ void RenderScene(MyGeometry *geometry, MyShader *shader)
     glUseProgram(shader->program);
 
     glBindVertexArray(geometry->vertexArray);
-    glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
+    glDrawArrays(GL_PATCHES, 0, geometry->elementCount);
 
     // reset state to default (no shader or geometry bound)
     glBindVertexArray(0);
