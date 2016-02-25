@@ -15,7 +15,7 @@ void main( )
 
     // set position of new vertex
     float u = gl_TessCoord.x;
-    if(u < 0.334)
+    /*if(u < 0.334)
     {
         gl_Position = p0;
     }
@@ -26,5 +26,6 @@ void main( )
     else
     {
         gl_Position = p1;
-    }
+    }*/
+	gl_Position = (1.0 - u)*((1.0 - u)*p0 + u*p1) + u((1.0 - u)*p1 + u*p2);
 }

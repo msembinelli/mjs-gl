@@ -13,5 +13,5 @@ void main( )
   // need to be set. If you are tessellating triangles, etc these parameters will
   // have different meanings.
   gl_TessLevelOuter[0] = 1;
-  gl_TessLevelOuter[1] = 2;
+  gl_TessLevelOuter[1] = 50;
 }
