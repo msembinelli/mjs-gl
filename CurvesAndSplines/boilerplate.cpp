@@ -15,6 +15,9 @@
 #include <string>
 #include <iterator>
 #include <algorithm>
+#include <utility>
+#include <vector>
+#include <cmath>
 
 // specify that we want the OpenGL core profile before including GLFW headers
 #define GLFW_INCLUDE_GLCOREARB
@@ -26,6 +29,111 @@
 using namespace std;
 
 // --------------------------------------------------------------------------
+// Enum used for switching scenes
+
+enum Scene
+{
+    BEZIER,
+	FONTS,
+	SCROLLING_TEXT,
+	SCENE_MAX
+};
+
+// --------------------------------------------------------------------------
+// Enum used for switching bezier type
+
+enum BezierScene
+{
+	BEZIER_QUADRATIC,
+	BEZIER_CUBIC,
+	BEZIER_MAX
+};
+
+// --------------------------------------------------------------------------
+// Enum used for switching font type
+
+//TODO add flag to show/ hide control points/polygons
+
+enum FontScene
+{
+	FONT_LORA,
+	FONT_SOURCE_SANS_PRO,
+	FONT_CUSTOM, //TODO pick font
+	FONT_MAX
+};
+
+// --------------------------------------------------------------------------
+// Enum used for switching scroll font type
+
+enum ScrollScene
+{
+	SCROLL_ALEX_BRUSH,
+	SCROLL_INCONSOLATA,
+	SCROLL_CUSTOM, //TODO pick font
+	SCROLL_MAX
+};
+
+// --------------------------------------------------------------------------
+// Globals
+
+Scene scene = BEZIER;
+BezierScene bezier_scene = BEZIER_QUADRATIC;
+FontScene font_scene = FONT_LORA;
+ScrollScene scroll_scene = SCROLL_ALEX_BRUSH;
+
+vector<GLfloat> vertices;
+vector<GLfloat> colours;
+
+// --------------------------------------------------------------------------
+// Universal geometry functions
+
+void NormalizeVertices()
+{
+	vector<GLfloat>::const_iterator it_max, it_min;
+	it_max = max_element(vertices.begin(), vertices.end());
+	it_min = min_element(vertices.begin(), vertices.end());
+	GLfloat scale = fabs(*it_max) > fabs(*it_min) ? fabs(*it_max) : fabs(*it_min);
+	if(scale != 0)
+	    for(GLuint i = 0; i < vertices.size(); i++){ vertices[i] /= scale; }
+
+    //TODO CENTER IMAGE, SCALE TO FIT WINDOW?
+
+}
+
+void AddControlPoint(GLfloat x, GLfloat y)
+{
+	vertices.push_back(x);
+	vertices.push_back(y);
+}
+
+void AddColour(GLfloat r, GLfloat g, GLfloat b)
+{
+	colours.push_back(r);
+	colours.push_back(g);
+	colours.push_back(b);
+}
+
+// --------------------------------------------------------------------------
+// Bezier functions
+
+void CubicBezierVertices(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3, GLfloat x4, GLfloat y4)
+{
+	AddControlPoint(x1, y1);
+	AddColour(1.0, 0.0, 0.0);
+	AddControlPoint(x2, y2);
+	AddColour(0.0, 0.0, 1.0);
+	AddControlPoint(x3, y3);
+	AddColour(0.0, 0.0, 1.0);
+	AddControlPoint(x4, y4);
+	AddColour(1.0, 0.0, 0.0);
+}
+
+void QuadraticBezierVertices(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3)
+{
+	CubicBezierVertices(x1, y1, x2, y2, x3, y3, x3, y3);
+}
+
+// --------------------------------------------------------------------------
 // OpenGL utility and support function prototypes
 
 void QueryGLVersion();
@@ -35,6 +143,7 @@ string shaderPath = "shaders/";
 string LoadSource(const string &filename);
 GLuint CompileShader(GLenum shaderType, const string &source);
 GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader, GLuint controlShader, GLuint evalShader);
+GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader);
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL shader programs for rendering
 
@@ -45,10 +154,11 @@ struct MyShader
     GLuint  fragment;
     GLuint  tessEval;
     GLuint  tessControl;
-    GLuint  program;
+    GLuint  tessProgram;
+    GLuint  controlProgram;
 
     // initialize shader and program names to zero (OpenGL reserved value)
-    MyShader() : vertex(0), fragment(0), tessEval(0), tessControl(0), program(0)
+    MyShader() : vertex(0), fragment(0), tessEval(0), tessControl(0), tessProgram(0), controlProgram(0)
     {}
 };
 
@@ -70,7 +180,8 @@ bool InitializeShaders(MyShader *shader)
     shader->tessControl = CompileShader(GL_TESS_CONTROL_SHADER, tessControlSource);
 
     // link shader program
-    shader->program = LinkProgram(shader->vertex, shader->fragment, shader->tessControl, shader->tessEval);
+    shader->tessProgram = LinkProgram(shader->vertex, shader->fragment, shader->tessControl, shader->tessEval);
+    shader->controlProgram = LinkProgram(shader->vertex, shader->fragment);
 
     // check for OpenGL errors and return false if error occurred
     return !CheckGLErrors();
@@ -81,7 +192,8 @@ void DestroyShaders(MyShader *shader)
 {
     // unbind any shader programs and destroy shader objects
     glUseProgram(0);
-    glDeleteProgram(shader->program);
+    glDeleteProgram(shader->tessProgram);
+    glDeleteProgram(shader->controlProgram);
     glDeleteShader(shader->vertex);
     glDeleteShader(shader->fragment);
     glDeleteShader(shader->tessEval);
@@ -104,59 +216,65 @@ struct MyGeometry
     {}
 };
 
-// create buffers and fill with geometry data, returning true if successful
-bool InitializeGeometry(MyGeometry *geometry)
+bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vector<GLfloat> *colour_vec)
 {
-    // three vertex positions and assocated colours of a triangle
-    const GLfloat vertices[][2] = {
-        { -0.6, -0.4 },
-        {  0.6, -0.4 },
-        {  0.0,  0.6 }
-    };
-    const GLfloat colours[][3] = {
-        { 1.0, 0.0, 0.0 },
-        { 0.0, 1.0, 0.0 },
-        { 0.0, 0.0, 1.0 }
-    };
-    geometry->elementCount = 3;
+	GLuint VERTEX_INDEX = 0;
+	GLuint COLOUR_INDEX = 1;
 
-    // these vertex attribute indices correspond to those specified for the
-    // input variables in the vertex shader
-    const GLuint VERTEX_INDEX = 0;
-    const GLuint COLOUR_INDEX = 1;
+	// create an array buffer object for storing our vertices
+	glGenBuffers(1, &geometry->vertexBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
+	glBufferData(GL_ARRAY_BUFFER, vertex_vec->size()*sizeof(GLfloat), vertex_vec->data(), GL_STATIC_DRAW);
 
-    // create an array buffer object for storing our vertices
-    glGenBuffers(1, &geometry->vertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	// create another one for storing our colours
+	glGenBuffers(1, &geometry->colourBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
+	glBufferData(GL_ARRAY_BUFFER, colour_vec->size()*sizeof(GLfloat), colour_vec->data(), GL_STATIC_DRAW);
 
-    // create another one for storing our colours
-    glGenBuffers(1, &geometry->colourBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(colours), colours, GL_STATIC_DRAW);
+	// create a vertex array object encapsulating all our vertex attributes
+	glGenVertexArrays(1, &geometry->vertexArray);
+	glBindVertexArray(geometry->vertexArray);
 
-    // create a vertex array object encapsulating all our vertex attributes
-    glGenVertexArrays(1, &geometry->vertexArray);
-    glBindVertexArray(geometry->vertexArray);
+	// associate the position array with the vertex array object
+	glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
+	glVertexAttribPointer(VERTEX_INDEX, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(VERTEX_INDEX);
 
-    // associate the position array with the vertex array object
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
-    glVertexAttribPointer(VERTEX_INDEX, 2, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(VERTEX_INDEX);
+	// associate the colour array with the vertex array object
+	glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
+	glVertexAttribPointer(COLOUR_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(COLOUR_INDEX);
 
-    // assocaite the colour array with the vertex array object
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
-    glVertexAttribPointer(COLOUR_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(COLOUR_INDEX);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 
-    // unbind our buffers, resetting to default state
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+	return !CheckGLErrors();
+}
 
-    glPatchParameteri(GL_PATCH_VERTICES, 3);
+// create buffers and fill with geometry data, returning true if successful
+bool InitializeCubicBezier(MyGeometry *geometry)
+{
+	CubicBezierVertices(1, 1, 4, 0, 6, 2, 9, 1);
+    CubicBezierVertices(8, 2, 0, 8, 0, -2, 9, 4);
+    CubicBezierVertices(5, 3, 3, 2, 3, 3, 5, 2);
+    CubicBezierVertices(3, 2.2, 3.5, 2.7, 3.5, 3.3, 3, 3.8);
+    CubicBezierVertices(2.8, 3.5, 2.4, 3.8, 2.4, 3.2, 2.8, 3.5);
+    NormalizeVertices();
 
-    // check for OpenGL errors and return false if error occurred
-    return !CheckGLErrors();
+    geometry->elementCount = vertices.size()/2;
+	return BindGeometryBuffers(geometry, &vertices, &colours);
+}
+
+bool InitializeQuadraticBezier(MyGeometry *geometry)
+{
+	QuadraticBezierVertices(1.0, 1.0, 2.0, -1.0, 0, -1.0);
+	QuadraticBezierVertices(0, -1, -2, -1, -1, 1);
+	QuadraticBezierVertices(-1, 1, 0, 1, 1, 1);
+	QuadraticBezierVertices(1.2, 0.5, 2.5, 1.0, 1.2, -0.4);
+    NormalizeVertices();
+
+    geometry->elementCount = vertices.size()/2;
+	return BindGeometryBuffers(geometry, &vertices, &colours);
 }
 
 // deallocate geometry-related objects
@@ -175,16 +293,32 @@ void DestroyGeometry(MyGeometry *geometry)
 void RenderScene(MyGeometry *geometry, MyShader *shader)
 {
     // clear screen to a dark grey colour
-    glClearColor(0.2, 0.2, 0.2, 1.0);
+    //glClearColor(0.2, 0.2, 0.2, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
     // bind our shader program and the vertex array object containing our
     // scene geometry, then tell OpenGL to draw our geometry
-    glUseProgram(shader->program);
-
+    glUseProgram(shader->tessProgram);
+    glUniform1ui(glGetUniformLocation(shader->tessProgram, "bezier_scene"), bezier_scene);
+    glUniform1i(glGetUniformLocation(shader->tessProgram, "control_points"), false);
+    glUniform1i(glGetUniformLocation(shader->tessProgram, "control_lines"), false);
+    glPatchParameteri(GL_PATCH_VERTICES, 4);
     glBindVertexArray(geometry->vertexArray);
     glDrawArrays(GL_PATCHES, 0, geometry->elementCount);
 
+    // Draw control points and polygons for bezier curves
+    glUseProgram(shader->controlProgram);
+    glUniform1i(glGetUniformLocation(shader->controlProgram, "control_lines"), true);
+    glUniform1i(glGetUniformLocation(shader->controlProgram, "control_points"), false);
+    glDrawArrays(GL_LINE_STRIP, 0, geometry->elementCount);
+
+    glUniform1i(glGetUniformLocation(shader->controlProgram, "control_lines"), false);
+    glUniform1i(glGetUniformLocation(shader->controlProgram, "control_points"), true);
+    glEnable(GL_PROGRAM_POINT_SIZE);
+    glDrawArrays(GL_POINTS, 0, geometry->elementCount);
+
+
+    glDisable(GL_PROGRAM_POINT_SIZE);
     // reset state to default (no shader or geometry bound)
     glBindVertexArray(0);
     glUseProgram(0);
@@ -208,6 +342,56 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
+
+	if (action == GLFW_PRESS)
+	{
+		switch(key)
+		{
+		case GLFW_KEY_F1:
+			scene = BEZIER;
+			break;
+		case GLFW_KEY_F2:
+			scene = FONTS;
+			break;
+		case GLFW_KEY_F3:
+			scene = SCROLLING_TEXT;
+			break;
+		case GLFW_KEY_UP:
+			switch(scene)
+			{
+			case BEZIER:
+				if(bezier_scene < BEZIER_MAX - 1)
+				    bezier_scene = BezierScene((GLuint)bezier_scene + 1);
+				break;
+			case FONTS:
+				if(font_scene < FONT_MAX - 1)
+				    font_scene = FontScene((GLuint)font_scene + 1);
+				break;
+			case SCROLLING_TEXT:
+				if(scroll_scene < SCROLL_MAX - 1)
+				    scroll_scene = ScrollScene((GLuint)scroll_scene + 1);
+				break;
+			}
+			break;
+		case GLFW_KEY_DOWN:
+		    switch(scene)
+		    {
+		    case BEZIER:
+				if(bezier_scene > 0)
+		    	    bezier_scene = BezierScene((GLuint)bezier_scene - 1);
+		    	break;
+		    case FONTS:
+				if(font_scene > 0)
+		    	    font_scene = FontScene((GLuint)font_scene - 1);
+		    	break;
+		    case SCROLLING_TEXT:
+				if(scroll_scene > 0)
+		    	    scroll_scene = ScrollScene((GLuint)scroll_scene - 1);
+		    	break;
+		    }
+		    break;
+		}
+	}
 }
 
 // ==========================================================================
@@ -254,17 +438,22 @@ int main(int argc, char *argv[])
         cout << "Program could not initialize shaders, TERMINATING" << endl;
         return -1;
     }
-
     // call function to create and fill buffers with geometry data
-    MyGeometry geometry;
-    if (!InitializeGeometry(&geometry))
+    MyGeometry bezier_geometry[BEZIER_MAX];
+    if (!InitializeQuadraticBezier(&bezier_geometry[BEZIER_QUADRATIC]))
+        cout << "Program failed to intialize geometry!" << endl;
+
+    vertices.clear();
+    colours.clear();
+
+    if (!InitializeCubicBezier(&bezier_geometry[BEZIER_CUBIC]))
         cout << "Program failed to intialize geometry!" << endl;
 
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
     {
         // call function to draw our scene
-        RenderScene(&geometry, &shader);
+        RenderScene(&bezier_geometry[bezier_scene], &shader);
 
         // scene is rendered to the back buffer, so swap to front for display
         glfwSwapBuffers(window);
@@ -274,7 +463,7 @@ int main(int argc, char *argv[])
     }
 
     // clean up allocated resources before exit
-    DestroyGeometry(&geometry);
+    DestroyGeometry(&bezier_geometry[bezier_scene]);
     DestroyShaders(&shader);
     glfwDestroyWindow(window);
     glfwTerminate();
@@ -388,6 +577,34 @@ GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader, GLuint controlSha
     if (fragmentShader) glAttachShader(programObject, fragmentShader);
     if (controlShader)  glAttachShader(programObject, controlShader);
     if (evalShader)  glAttachShader(programObject, evalShader);
+
+    // try linking the program with given attachments
+    glLinkProgram(programObject);
+
+    // retrieve link status
+    GLint status;
+    glGetProgramiv(programObject, GL_LINK_STATUS, &status);
+    if (status == GL_FALSE)
+    {
+        GLint length;
+        glGetProgramiv(programObject, GL_INFO_LOG_LENGTH, &length);
+        string info(length, ' ');
+        glGetProgramInfoLog(programObject, info.length(), &length, &info[0]);
+        cout << "ERROR linking shader program:" << endl;
+        cout << info << endl;
+    }
+
+    return programObject;
+}
+
+GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader)
+{
+    // allocate program object name
+    GLuint programObject = glCreateProgram();
+
+    // attach provided shader objects to this program
+    if (vertexShader)   glAttachShader(programObject, vertexShader);
+    if (fragmentShader) glAttachShader(programObject, fragmentShader);
 
     // try linking the program with given attachments
     glLinkProgram(programObject);
