@@ -412,6 +412,7 @@ int main(int argc, char *argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_SAMPLES, 4);
     window = glfwCreateWindow(512, 512, "CPSC 453 OpenGL Boilerplate", 0, 0);
     if (!window) {
         cout << "Program failed to create GLFW window, TERMINATING" << endl;
