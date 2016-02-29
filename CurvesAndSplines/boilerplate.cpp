@@ -76,62 +76,17 @@ enum ScrollScene
 // --------------------------------------------------------------------------
 // Globals
 
+#define NAME_SIZE 4
+
 Scene scene = BEZIER;
 BezierScene bezier_scene = BEZIER_QUADRATIC;
 FontScene font_scene = FONT_LORA;
 ScrollScene scroll_scene = SCROLL_ALEX_BRUSH;
 
+bool show_control_points = true;
+
 vector<GLfloat> vertices;
 vector<GLfloat> colours;
-
-// --------------------------------------------------------------------------
-// Universal geometry functions
-
-void NormalizeVertices()
-{
-	vector<GLfloat>::const_iterator it_max, it_min;
-	it_max = max_element(vertices.begin(), vertices.end());
-	it_min = min_element(vertices.begin(), vertices.end());
-	GLfloat scale = fabs(*it_max) > fabs(*it_min) ? fabs(*it_max) : fabs(*it_min);
-	if(scale != 0)
-	    for(GLuint i = 0; i < vertices.size(); i++){ vertices[i] /= scale; }
-
-    //TODO CENTER IMAGE, SCALE TO FIT WINDOW?
-
-}
-
-void AddControlPoint(GLfloat x, GLfloat y)
-{
-	vertices.push_back(x);
-	vertices.push_back(y);
-}
-
-void AddColour(GLfloat r, GLfloat g, GLfloat b)
-{
-	colours.push_back(r);
-	colours.push_back(g);
-	colours.push_back(b);
-}
-
-// --------------------------------------------------------------------------
-// Bezier functions
-
-void CubicBezierVertices(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3, GLfloat x4, GLfloat y4)
-{
-	AddControlPoint(x1, y1);
-	AddColour(1.0, 0.0, 0.0);
-	AddControlPoint(x2, y2);
-	AddColour(0.0, 0.0, 1.0);
-	AddControlPoint(x3, y3);
-	AddColour(0.0, 0.0, 1.0);
-	AddControlPoint(x4, y4);
-	AddColour(1.0, 0.0, 0.0);
-}
-
-void QuadraticBezierVertices(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3)
-{
-	CubicBezierVertices(x1, y1, x2, y2, x3, y3, x3, y3);
-}
 
 // --------------------------------------------------------------------------
 // OpenGL utility and support function prototypes
@@ -216,6 +171,120 @@ struct MyGeometry
     {}
 };
 
+// --------------------------------------------------------------------------
+// Universal geometry functions
+
+void CenterVertices()
+{
+	vector<GLfloat> tmp_vec_x;
+	for(GLuint i = 0; i < vertices.size(); i++)
+	{
+		if(((i + 1) % 2))
+			tmp_vec_x.push_back(vertices[i]);
+	}
+	vector<GLfloat> tmp_vec_y;
+	for(GLuint i = 0; i < vertices.size(); i++)
+	{
+		if(!((i + 1) % 2))
+			tmp_vec_y.push_back(vertices[i]);
+	}
+
+	vector<GLfloat>::const_iterator it_max_x, it_min_x, it_max_y, it_min_y;
+	it_max_x = max_element(tmp_vec_x.begin(), tmp_vec_x.end());
+	it_min_x = min_element(tmp_vec_x.begin(), tmp_vec_x.end());
+	it_max_y = max_element(tmp_vec_y.begin(), tmp_vec_y.end());
+	it_min_y = min_element(tmp_vec_y.begin(), tmp_vec_y.end());
+	GLfloat center_x = ((*it_max_x - *it_min_x) / 2) + *it_min_x;
+	GLfloat center_y = ((*it_max_y - *it_min_y) / 2) + *it_min_y;
+	for(GLuint i = 0; i < vertices.size(); i++)
+	{
+		if(((i + 1) % 2))
+		{
+			if(center_x != 0)
+			    vertices[i] -= center_x;
+		}
+		else
+		{
+			if(center_y != 0)
+			    vertices[i] -= center_y;
+		}
+	}
+
+}
+
+void NormalizeVertices()
+{
+	vector<GLfloat> tmp_vec_x;
+	for(GLuint i = 0; i < vertices.size(); i++)
+	{
+		if(((i + 1) % 2))
+			tmp_vec_x.push_back(vertices[i]);
+	}
+	vector<GLfloat> tmp_vec_y;
+	for(GLuint i = 0; i < vertices.size(); i++)
+	{
+		if(!((i + 1) % 2))
+			tmp_vec_y.push_back(vertices[i]);
+	}
+
+	vector<GLfloat>::const_iterator it_max_x, it_min_x, it_max_y, it_min_y;
+	it_max_x = max_element(tmp_vec_x.begin(), tmp_vec_x.end());
+	it_min_x = min_element(tmp_vec_x.begin(), tmp_vec_x.end());
+	it_max_y = max_element(tmp_vec_y.begin(), tmp_vec_y.end());
+	it_min_y = min_element(tmp_vec_y.begin(), tmp_vec_y.end());
+
+	GLfloat scale_x = fabs(*it_max_x) > fabs(*it_min_x) ? fabs(*it_max_x) : fabs(*it_min_x);
+	GLfloat scale_y = fabs(*it_max_y) > fabs(*it_min_y) ? fabs(*it_max_y) : fabs(*it_min_y);
+	GLfloat scale = scale_x > scale_y ? scale_x : scale_y;
+
+	if(scale != 0)
+	    for(GLuint i = 0; i < vertices.size(); i++){vertices[i] /= scale;}
+
+}
+
+void AddControlPoint(GLfloat x, GLfloat y)
+{
+	vertices.push_back(x);
+	vertices.push_back(y);
+}
+
+void AddColour(GLfloat r, GLfloat g, GLfloat b)
+{
+	colours.push_back(r);
+	colours.push_back(g);
+	colours.push_back(b);
+}
+
+// --------------------------------------------------------------------------
+// Bezier functions
+
+void CubicBezierVertices(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3, GLfloat x4, GLfloat y4)
+{
+	AddControlPoint(x1, y1);
+	AddColour(1.0, 0.0, 0.0);
+	AddControlPoint(x2, y2);
+	AddColour(0.0, 0.0, 1.0);
+	AddControlPoint(x3, y3);
+	AddColour(0.0, 0.0, 1.0);
+	AddControlPoint(x4, y4);
+	AddColour(1.0, 0.0, 0.0);
+}
+
+void QuadraticBezierVertices(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3)
+{
+	CubicBezierVertices(x1, y1, x2, y2, x3, y3, x3, y3);
+}
+
+void LineBezierVertices(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
+{
+	CubicBezierVertices(x1, y1, x2, y2, x1, y1, x2, y2);
+}
+
+void PointBezierVertices(GLfloat x1, GLfloat y1)
+{
+	CubicBezierVertices(x1, y1, x1, y1, x1, y1, x1, y1);
+}
+
 bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vector<GLfloat> *colour_vec)
 {
 	GLuint VERTEX_INDEX = 0;
@@ -248,6 +317,9 @@ bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vect
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
+	vertex_vec->clear();
+	colour_vec->clear();
+
 	return !CheckGLErrors();
 }
 
@@ -259,6 +331,7 @@ bool InitializeCubicBezier(MyGeometry *geometry)
     CubicBezierVertices(5, 3, 3, 2, 3, 3, 5, 2);
     CubicBezierVertices(3, 2.2, 3.5, 2.7, 3.5, 3.3, 3, 3.8);
     CubicBezierVertices(2.8, 3.5, 2.4, 3.8, 2.4, 3.2, 2.8, 3.5);
+    CenterVertices();
     NormalizeVertices();
 
     geometry->elementCount = vertices.size()/2;
@@ -271,10 +344,66 @@ bool InitializeQuadraticBezier(MyGeometry *geometry)
 	QuadraticBezierVertices(0, -1, -2, -1, -1, 1);
 	QuadraticBezierVertices(-1, 1, 0, 1, 1, 1);
 	QuadraticBezierVertices(1.2, 0.5, 2.5, 1.0, 1.2, -0.4);
+    CenterVertices();
     NormalizeVertices();
 
     geometry->elementCount = vertices.size()/2;
 	return BindGeometryBuffers(geometry, &vertices, &colours);
+}
+
+enum SegmentDegree
+{
+	POINT,
+	LINE,
+	QUAD,
+	CUBIC
+};
+
+bool InitializeName(MyGeometry *geometry, MyGlyph *name)
+{
+	GLfloat x_alignment = 0;
+    for(GLuint i = 0; i < NAME_SIZE; i++)
+    {   GLfloat max_x = -100000.0;
+    	for(GLuint j = 0; j < name[i].contours.size(); j++)
+    	{
+    		for(GLuint k = 0; k < name[i].contours[j].size(); k++)
+    		{
+    			GLuint degree = name[i].contours[j][k].degree;
+    			MySegment segment = name[i].contours[j][k];
+    			switch(degree)
+    			{
+    			case POINT:
+                    PointBezierVertices(segment.x[0] + x_alignment, segment.y[0]);
+    				break;
+    			case LINE:
+    				LineBezierVertices(segment.x[0] + x_alignment, segment.y[0], segment.x[1] + x_alignment, segment.y[1]);
+    				break;
+    			case QUAD:
+    				QuadraticBezierVertices(segment.x[0] + x_alignment, segment.y[0], segment.x[1] + x_alignment, segment.y[1], segment.x[2] + x_alignment, segment.y[2]);
+    				break;
+    			case CUBIC:
+    				CubicBezierVertices(segment.x[0] + x_alignment, segment.y[0], segment.x[1] + x_alignment, segment.y[1], segment.x[2] + x_alignment, segment.y[2], segment.x[3] + x_alignment, segment.y[3]);
+    				break;
+    			}
+
+    			for(GLuint l = 0; l < segment.degree; l++)
+    			{
+    				if (segment.x[l] > max_x)
+    				{
+    					max_x = segment.x[l];
+    				}
+    			}
+    		}
+
+    	}
+    	x_alignment += (max_x + 0.1);
+    }
+    CenterVertices();
+    NormalizeVertices();
+
+    geometry->elementCount = vertices.size()/2;
+	return BindGeometryBuffers(geometry, &vertices, &colours);
+	//return true;
 }
 
 // deallocate geometry-related objects
@@ -290,16 +419,15 @@ void DestroyGeometry(MyGeometry *geometry)
 // --------------------------------------------------------------------------
 // Rendering function that draws our scene to the frame buffer
 
-void RenderScene(MyGeometry *geometry, MyShader *shader)
+void RenderBezier(MyGeometry *geometry, MyShader *shader)
 {
-    // clear screen to a dark grey colour
-    //glClearColor(0.2, 0.2, 0.2, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT);
-
     // bind our shader program and the vertex array object containing our
     // scene geometry, then tell OpenGL to draw our geometry
     glUseProgram(shader->tessProgram);
-    glUniform1ui(glGetUniformLocation(shader->tessProgram, "bezier_scene"), bezier_scene);
+    if(scene == BEZIER)
+        glUniform1ui(glGetUniformLocation(shader->tessProgram, "bezier_scene"), bezier_scene);
+    else
+    	glUniform1ui(glGetUniformLocation(shader->tessProgram, "bezier_scene"), BEZIER_CUBIC);
     glUniform1i(glGetUniformLocation(shader->tessProgram, "control_points"), false);
     glUniform1i(glGetUniformLocation(shader->tessProgram, "control_lines"), false);
     glPatchParameteri(GL_PATCH_VERTICES, 4);
@@ -307,21 +435,46 @@ void RenderScene(MyGeometry *geometry, MyShader *shader)
     glDrawArrays(GL_PATCHES, 0, geometry->elementCount);
 
     // Draw control points and polygons for bezier curves
-    glUseProgram(shader->controlProgram);
-    glUniform1i(glGetUniformLocation(shader->controlProgram, "control_lines"), true);
-    glUniform1i(glGetUniformLocation(shader->controlProgram, "control_points"), false);
-    glDrawArrays(GL_LINE_STRIP, 0, geometry->elementCount);
+    if(show_control_points)
+    {
+        glUseProgram(shader->controlProgram);
+        glUniform1i(glGetUniformLocation(shader->controlProgram, "control_lines"), true);
+        glUniform1i(glGetUniformLocation(shader->controlProgram, "control_points"), false);
+        glDrawArrays(GL_LINE_STRIP, 0, geometry->elementCount);
 
-    glUniform1i(glGetUniformLocation(shader->controlProgram, "control_lines"), false);
-    glUniform1i(glGetUniformLocation(shader->controlProgram, "control_points"), true);
-    glEnable(GL_PROGRAM_POINT_SIZE);
-    glDrawArrays(GL_POINTS, 0, geometry->elementCount);
+        glUniform1i(glGetUniformLocation(shader->controlProgram, "control_lines"), false);
+        glUniform1i(glGetUniformLocation(shader->controlProgram, "control_points"), true);
+        glEnable(GL_PROGRAM_POINT_SIZE);
+        glDrawArrays(GL_POINTS, 0, geometry->elementCount);
 
 
-    glDisable(GL_PROGRAM_POINT_SIZE);
+        glDisable(GL_PROGRAM_POINT_SIZE);
+    }
     // reset state to default (no shader or geometry bound)
     glBindVertexArray(0);
     glUseProgram(0);
+}
+
+void RenderName(MyGeometry *geometry, MyShader *shader)
+{
+    RenderBezier(geometry, shader);
+}
+
+void RenderScene(MyGeometry *geometry, MyShader *shader)
+{
+    // clear screen to a dark grey colour
+    //glClearColor(0.2, 0.2, 0.2, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    switch(scene)
+    {
+    case BEZIER:
+    	RenderBezier(geometry, shader);
+    	break;
+    case FONTS:
+    	RenderName(geometry, shader);
+    	break;
+    }
 
     // check for an report any OpenGL errors
     CheckGLErrors();
@@ -390,6 +543,9 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		    	break;
 		    }
 		    break;
+			case GLFW_KEY_C:
+				show_control_points = !show_control_points;
+				break;
 		}
 	}
 }
@@ -424,14 +580,49 @@ int main(int argc, char *argv[])
     glfwSetKeyCallback(window, KeyCallback);
     glfwMakeContextCurrent(window);
 
-    //Load Inconsolata font and print some info
+    char name[5] = "Matt";
+
+    //Load lora font and print some info
   	GlyphExtractor* ge = new GlyphExtractor();
-    if(!ge->LoadFontFile("CPSC453-A3-Fonts/Inconsolata.otf"))
+    if(ge->LoadFontFile("CPSC453-A3-Fonts/Lora-Bold.ttf"))
+      cout << "font Lora-Bold.ttf loaded" << endl;
+    MyGlyph lora_name[NAME_SIZE];
+    for(GLuint i = 0; i < NAME_SIZE; i++) { lora_name[i] =  ge->ExtractGlyph(name[i]); }
+
+    cout << "\n GLYPHS LOADED!";
+
+    if(ge->LoadFontFile("CPSC453-A3-Fonts/SourceSansPro-Bold.otf"))
+      cout << "font SourceSansPro-Bold.otf loaded" << endl;
+    MyGlyph ssp_name[NAME_SIZE];
+    for(GLuint i = 0; i < NAME_SIZE; i++) { ssp_name[i] =  ge->ExtractGlyph(name[i]); }
+
+    if(ge->LoadFontFile("CPSC453-A3-Fonts/Inconsolata.otf"))
       cout << "font Inconsolata.otf loaded" << endl;
-    MyGlyph aGlyph = ge->ExtractGlyph('a');
+    MyGlyph inconsolata_name[NAME_SIZE];
+    for(GLuint i = 0; i < NAME_SIZE; i++) { inconsolata_name[i] =  ge->ExtractGlyph(name[i]); }
 
     // query and print out information about our OpenGL environment
     QueryGLVersion();
+    cout << "\n INIT BEZIER GEOMETRY!";
+    // call function to create and fill buffers with geometry data for bezier scenes
+    MyGeometry bezier_geometry[BEZIER_MAX];
+    if (!InitializeQuadraticBezier(&bezier_geometry[BEZIER_QUADRATIC]))
+        cout << "Program failed to intialize geometry!" << endl;
+
+    if (!InitializeCubicBezier(&bezier_geometry[BEZIER_CUBIC]))
+        cout << "Program failed to intialize geometry!" << endl;
+
+    cout << "\n INIT NAME GEOMETRY!";
+    // call function to create and fill buffers with geometry data for font scene
+    MyGeometry name_geometry[FONT_MAX];
+    if (!InitializeName(&name_geometry[FONT_LORA], lora_name))
+        cout << "Program failed to intialize geometry!" << endl;
+
+    if (!InitializeName(&name_geometry[FONT_SOURCE_SANS_PRO], ssp_name))
+        cout << "Program failed to intialize geometry!" << endl;
+
+    if (!InitializeName(&name_geometry[FONT_CUSTOM], inconsolata_name))
+        cout << "Program failed to intialize geometry!" << endl;
 
     // call function to load and compile shader programs
     MyShader shader;
@@ -439,22 +630,22 @@ int main(int argc, char *argv[])
         cout << "Program could not initialize shaders, TERMINATING" << endl;
         return -1;
     }
-    // call function to create and fill buffers with geometry data
-    MyGeometry bezier_geometry[BEZIER_MAX];
-    if (!InitializeQuadraticBezier(&bezier_geometry[BEZIER_QUADRATIC]))
-        cout << "Program failed to intialize geometry!" << endl;
 
-    vertices.clear();
-    colours.clear();
-
-    if (!InitializeCubicBezier(&bezier_geometry[BEZIER_CUBIC]))
-        cout << "Program failed to intialize geometry!" << endl;
-
+    MyGeometry *geometry_select;
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
     {
         // call function to draw our scene
-        RenderScene(&bezier_geometry[bezier_scene], &shader);
+    	switch(scene)
+    	{
+        case BEZIER:
+        	geometry_select = &bezier_geometry[bezier_scene];
+        	break;
+        case FONTS:
+        	geometry_select = &name_geometry[font_scene];
+        	break;
+    	}
+        RenderScene(geometry_select, &shader);
 
         // scene is rendered to the back buffer, so swap to front for display
         glfwSwapBuffers(window);
@@ -463,8 +654,9 @@ int main(int argc, char *argv[])
         glfwWaitEvents();
     }
 
-    // clean up allocated resources before exit
-    DestroyGeometry(&bezier_geometry[bezier_scene]);
+	// clean up allocated resources before exit
+    for(GLuint i = 0; i < sizeof(name_geometry)/sizeof(name_geometry[0]); i++){DestroyGeometry(&name_geometry[i]);}
+	for(GLuint i = 0; i < sizeof(bezier_geometry)/sizeof(bezier_geometry[0]); i++){DestroyGeometry(&bezier_geometry[i]);}
     DestroyShaders(&shader);
     glfwDestroyWindow(window);
     glfwTerminate();
