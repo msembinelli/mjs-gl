@@ -437,7 +437,7 @@ bool InitializeQuadraticBezier(MyGeometry *geometry)
 	QuadraticBezierVertices(1.0, 1.0, 2.0, -1.0, 0, -1.0);
 	QuadraticBezierVertices(0, -1, -2, -1, -1, 1);
 	QuadraticBezierVertices(-1, 1, 0, 1, 1, 1);
-	QuadraticBezierVertices(1.2, 0.5, 2.5, 1.0, 1.2, -0.4);
+	QuadraticBezierVertices(1.2, 0.5, 2.5, 1.0, 1.3, -0.4);
     CenterVertices(&vertices);
     NormalizeVertices(&vertices);
 
