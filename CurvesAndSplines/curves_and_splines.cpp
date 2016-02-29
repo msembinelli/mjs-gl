@@ -79,7 +79,6 @@ enum ScrollScene
 
 #define NAME_SIZE 4
 #define SENTENCE_SIZE 27
-#define SCROLL_SPEED 0.75
 
 Scene scene = BEZIER;
 BezierScene bezier_scene = BEZIER_QUADRATIC;
@@ -91,6 +90,7 @@ bool lines_toggle = false;
 
 GLfloat lastTime = 0;
 GLfloat scroll_pos = 0.0;
+GLfloat scroll_speed =  0.80;
 GLfloat max_x[SCROLL_MAX];
 
 vector<GLfloat> vertices;
@@ -601,16 +601,12 @@ void GetScrollRate()
 	// Measure speed
     currentTime = glfwGetTime();
 
-    scroll_pos += SCROLL_SPEED/(1/GLfloat(currentTime - lastTime));
-    cout << "scroll_pos: " << scroll_pos << endl;
+    scroll_pos += scroll_speed/(1/GLfloat(currentTime - lastTime));
 
-    if(scene == SCROLLING_TEXT)
-    {
-    	if((max_x[scroll_scene] - scroll_pos) < -1.0)
-    	{
-    		scroll_pos = -1.0;
-    	}
-    }
+   if((max_x[scroll_scene] - scroll_pos) < -1.0)
+   {
+       scroll_pos = -1.0;
+   }
 
 }
 
@@ -682,6 +678,17 @@ void ErrorCallback(int error, const char* description)
     cout << description << endl;
 }
 
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    if(scene == SCROLLING_TEXT)
+    {
+	    if(yoffset == 1)
+	    	scroll_speed += 0.10;
+	    else if (yoffset == -1 && scroll_speed >= 0.0)
+	    	scroll_speed -= 0.10;
+    }
+}
+
 // handles keyboard input events
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -692,15 +699,15 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 	{
 		switch(key)
 		{
-		case GLFW_KEY_F1:
+		case GLFW_KEY_1:
 			scroll_pos = 0.0;
 			scene = BEZIER;
 			break;
-		case GLFW_KEY_F2:
+		case GLFW_KEY_2:
 			scroll_pos = 0.0;
 			scene = FONTS;
 			break;
-		case GLFW_KEY_F3:
+		case GLFW_KEY_3:
 			scroll_pos = -1.0;
 			scene = SCROLLING_TEXT;
 			break;
@@ -738,9 +745,17 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		    	break;
 		    }
 		    break;
-			case GLFW_KEY_C:
+		case GLFW_KEY_C:
 				show_control_points = !show_control_points;
 				break;
+		case GLFW_KEY_W:
+			if(scene == SCROLLING_TEXT)
+				scroll_speed += 0.10;
+			    break;
+		case GLFW_KEY_S:
+			if(scene == SCROLLING_TEXT && scroll_speed >= 0.00)
+				scroll_speed -= 0.10;
+			    break;
 		}
 	}
 }
@@ -773,6 +788,7 @@ int main(int argc, char *argv[])
 
     // set keyboard callback function and make our context current (active)
     glfwSetKeyCallback(window, KeyCallback);
+    glfwSetScrollCallback(window, scroll_callback);
     glfwMakeContextCurrent(window);
 
     char name[5] = "Matt";
@@ -883,6 +899,7 @@ int main(int argc, char *argv[])
 	// clean up allocated resources before exit
     for(GLuint i = 0; i < sizeof(name_geometry)/sizeof(name_geometry[0]); i++){DestroyGeometry(&name_geometry[i]);}
 	for(GLuint i = 0; i < sizeof(bezier_geometry)/sizeof(bezier_geometry[0]); i++){DestroyGeometry(&bezier_geometry[i]);}
+	for(GLuint i = 0; i < sizeof(scroll_geometry)/sizeof(scroll_geometry[0]); i++){DestroyGeometry(&scroll_geometry[i]);}
     DestroyShaders(&shader);
     glfwDestroyWindow(window);
     glfwTerminate();
