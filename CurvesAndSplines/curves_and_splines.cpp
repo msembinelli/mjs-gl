@@ -541,7 +541,7 @@ void InitializeWordAppend(MyGlyph *name, GLuint word_size, GLfloat &x_alignment)
     			}
     		}
     	}
-    	x_alignment += (max_x + 0.05*0.7);
+    	x_alignment += name[i].advance;
     }
 }
 
