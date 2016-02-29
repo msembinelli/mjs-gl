@@ -103,7 +103,6 @@ vector<GLfloat> colours;
 void QueryGLVersion();
 bool CheckGLErrors();
 
-string shaderPath = "shaders/";
 string LoadSource(const string &filename);
 GLuint CompileShader(GLenum shaderType, const string &source);
 GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader, GLuint controlShader, GLuint evalShader);
@@ -130,10 +129,10 @@ struct MyShader
 bool InitializeShaders(MyShader *shader)
 {
     // load shader source from files
-    string vertexSource = LoadSource(shaderPath + "vertex.glsl");
-    string fragmentSource = LoadSource(shaderPath + "fragment.glsl");
-    string tessEvalSource = LoadSource(shaderPath + "tess_eval.glsl");
-    string tessControlSource = LoadSource(shaderPath + "tess_control.glsl");
+    string vertexSource = LoadSource("vertex.glsl");
+    string fragmentSource = LoadSource("fragment.glsl");
+    string tessEvalSource = LoadSource("tess_eval.glsl");
+    string tessControlSource = LoadSource("tess_control.glsl");
 
     if (vertexSource.empty() || fragmentSource.empty() || tessEvalSource.empty() || tessControlSource.empty()) return false;
 
@@ -795,17 +794,17 @@ int main(int argc, char *argv[])
 
     //Load lora font and print some info
   	GlyphExtractor* ge = new GlyphExtractor();
-    if(ge->LoadFontFile("CPSC453-A3-Fonts/Lora-Bold.ttf"))
+    if(ge->LoadFontFile("Lora-Bold.ttf"))
       cout << "font Lora-Bold.ttf loaded" << endl;
     MyGlyph lora_name[NAME_SIZE];
     for(GLuint i = 0; i < NAME_SIZE; i++) { lora_name[i] =  ge->ExtractGlyph(name[i]); }
 
-    if(ge->LoadFontFile("CPSC453-A3-Fonts/SourceSansPro-Bold.otf"))
+    if(ge->LoadFontFile("SourceSansPro-Bold.otf"))
       cout << "font SourceSansPro-Bold.otf loaded" << endl;
     MyGlyph ssp_name[NAME_SIZE];
     for(GLuint i = 0; i < NAME_SIZE; i++) { ssp_name[i] =  ge->ExtractGlyph(name[i]); }
 
-    if(ge->LoadFontFile("CPSC453-A3-Fonts/AlexBrush-Regular.ttf"))
+    if(ge->LoadFontFile("AlexBrush-Regular.ttf"))
       cout << "font AlexBrush-Regular.ttf loaded" << endl;
     MyGlyph alex_brush_name[NAME_SIZE];
     for(GLuint i = 0; i < NAME_SIZE; i++) { alex_brush_name[i] =  ge->ExtractGlyph(name[i]); }
@@ -840,19 +839,19 @@ int main(int argc, char *argv[])
     MyGeometry scroll_geometry[SCROLL_MAX];
 
     //Load sentence for scrolling text
-    if(ge->LoadFontFile("CPSC453-A3-Fonts/AlexBrush-Regular.ttf"))
+    if(ge->LoadFontFile("AlexBrush-Regular.ttf"))
       cout << "font AlexBrush-Regular.ttf loaded" << endl;
 
     if (!InitializeSentence(&scroll_geometry[SCROLL_ALEX_BRUSH], ge, sentence, SCROLL_ALEX_BRUSH))
         cout << "Program failed to intialize geometry!" << endl;
 
-    if(ge->LoadFontFile("CPSC453-A3-Fonts/Inconsolata.otf"))
+    if(ge->LoadFontFile("Inconsolata.otf"))
       cout << "font Inconsolata.otf loaded" << endl;
 
     if (!InitializeSentence(&scroll_geometry[SCROLL_INCONSOLATA], ge, sentence, SCROLL_INCONSOLATA))
         cout << "Program failed to intialize geometry!" << endl;
 
-    if(ge->LoadFontFile("CPSC453-A3-Fonts/Lora-Bold.ttf"))
+    if(ge->LoadFontFile("Lora-Bold.ttf"))
       cout << "font Lora-Bold.ttf loaded" << endl;
 
     if (!InitializeSentence(&scroll_geometry[SCROLL_CUSTOM], ge, sentence, SCROLL_CUSTOM))
