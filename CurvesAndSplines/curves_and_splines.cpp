@@ -683,7 +683,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
     {
 	    if(yoffset == 1)
 	    	scroll_speed += 0.10;
-	    else if (yoffset == -1 && scroll_speed >= 0.0)
+	    else if (yoffset == -1 && scroll_speed > 0.0)
 	    	scroll_speed -= 0.10;
     }
 }
@@ -752,7 +752,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 				scroll_speed += 0.10;
 			    break;
 		case GLFW_KEY_S:
-			if(scene == SCROLLING_TEXT && scroll_speed >= 0.00)
+			if(scene == SCROLLING_TEXT && scroll_speed > 0.00)
 				scroll_speed -= 0.10;
 			    break;
 		}
