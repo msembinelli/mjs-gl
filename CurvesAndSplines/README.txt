@@ -30,8 +30,15 @@ freetype-2.6.2 folder (that came with the boilerplate)
 
 How To Compile And Run
 =====================================================
+NOTE: D2L DOES NOT ALLOW FILES WITHOUT EXTENSIONS,
+THEREFORE PLEASE USE THE MAKEFILE FROM THE BOILERPLATE
+CODE TO RUN!!
+
 Build with make:
 make
+
+Without make:
+g++ -std=c++11 *.cpp -o a.out -lGL -lglfw -lfreetype -I./freetype-2.6.2/include
 
 Run with:
 ./a.out
