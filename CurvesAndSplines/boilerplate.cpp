@@ -59,7 +59,7 @@ enum FontScene
 {
 	FONT_LORA,
 	FONT_SOURCE_SANS_PRO,
-	FONT_CUSTOM, //TODO pick font
+	FONT_CUSTOM,
 	FONT_MAX
 };
 
@@ -70,7 +70,7 @@ enum ScrollScene
 {
 	SCROLL_ALEX_BRUSH,
 	SCROLL_INCONSOLATA,
-	SCROLL_CUSTOM, //TODO pick font
+	SCROLL_CUSTOM,
 	SCROLL_MAX
 };
 
@@ -78,6 +78,8 @@ enum ScrollScene
 // Globals
 
 #define NAME_SIZE 4
+#define SENTENCE_SIZE 27
+#define SCROLL_SPEED 0.75
 
 Scene scene = BEZIER;
 BezierScene bezier_scene = BEZIER_QUADRATIC;
@@ -86,6 +88,10 @@ ScrollScene scroll_scene = SCROLL_ALEX_BRUSH;
 
 bool show_control_points = true;
 bool lines_toggle = false;
+
+GLfloat lastTime = 0;
+GLfloat scroll_pos = 0.0;
+GLfloat max_x[SCROLL_MAX];
 
 vector<GLfloat> vertices;
 vector<GLfloat> control_vertices;
@@ -179,14 +185,8 @@ struct MyGeometry
 // --------------------------------------------------------------------------
 // Universal geometry functions
 
-void CenterVertices(vector<GLfloat> *points)
+GLfloat GetMaxY(vector<GLfloat> *points)
 {
-	vector<GLfloat> tmp_vec_x;
-	for(GLuint i = 0; i < points->size(); i++)
-	{
-		if(((i + 1) % 2))
-			tmp_vec_x.push_back(points->at(i));
-	}
 	vector<GLfloat> tmp_vec_y;
 	for(GLuint i = 0; i < points->size(); i++)
 	{
@@ -194,13 +194,94 @@ void CenterVertices(vector<GLfloat> *points)
 			tmp_vec_y.push_back(points->at(i));
 	}
 
-	vector<GLfloat>::const_iterator it_max_x, it_min_x, it_max_y, it_min_y;
+	vector<GLfloat>::const_iterator it_max_y;
+	it_max_y = max_element(tmp_vec_y.begin(), tmp_vec_y.end());
+	return *it_max_y;
+}
+
+GLfloat GetMinY(vector<GLfloat> *points)
+{
+	vector<GLfloat> tmp_vec_y;
+	for(GLuint i = 0; i < points->size(); i++)
+	{
+		if(!((i + 1) % 2))
+			tmp_vec_y.push_back(points->at(i));
+	}
+
+	vector<GLfloat>::const_iterator it_min_y;
+	it_min_y = min_element(tmp_vec_y.begin(), tmp_vec_y.end());
+	return *it_min_y;
+}
+
+GLfloat GetMaxX(vector<GLfloat> *points)
+{
+	vector<GLfloat> tmp_vec_x;
+	for(GLuint i = 0; i < points->size(); i++)
+	{
+		if(((i + 1) % 2))
+			tmp_vec_x.push_back(points->at(i));
+	}
+
+	vector<GLfloat>::const_iterator it_max_x;
 	it_max_x = max_element(tmp_vec_x.begin(), tmp_vec_x.end());
+	return *it_max_x;
+}
+
+GLfloat GetMinX(vector<GLfloat> *points)
+{
+	vector<GLfloat> tmp_vec_x;
+	for(GLuint i = 0; i < points->size(); i++)
+	{
+		if(((i + 1) % 2))
+			tmp_vec_x.push_back(points->at(i));
+	}
+
+	vector<GLfloat>::const_iterator it_min_x;
 	it_min_x = min_element(tmp_vec_x.begin(), tmp_vec_x.end());
+	return *it_min_x;
+}
+
+void ScaleVertices(vector<GLfloat> *points, GLfloat scale)
+{
+	if(scale != 0)
+	    for(GLuint i = 0; i < points->size(); i++)
+	    {
+	    	points->at(i) *= scale;
+	    }
+}
+
+void CenterYVertices(vector<GLfloat> *points)
+{
+	vector<GLfloat> tmp_vec_y;
+	for(GLuint i = 0; i < points->size(); i++)
+	{
+		if(!((i + 1) % 2))
+			tmp_vec_y.push_back(points->at(i));
+	}
+
+	vector<GLfloat>::const_iterator it_max_y, it_min_y;
 	it_max_y = max_element(tmp_vec_y.begin(), tmp_vec_y.end());
 	it_min_y = min_element(tmp_vec_y.begin(), tmp_vec_y.end());
-	GLfloat center_x = ((*it_max_x - *it_min_x) / 2) + *it_min_x;
 	GLfloat center_y = ((*it_max_y - *it_min_y) / 2) + *it_min_y;
+	for(GLuint i = 0; i < points->size(); i++)
+	{
+		if(!((i + 1) % 2))
+		{
+			if(center_y != 0)
+				points->at(i) -= center_y;
+		}
+	}
+}
+
+void CenterVertices(vector<GLfloat> *points)
+{
+	GLfloat min_x, max_x, min_y, max_y;
+	max_x = GetMaxX(points);
+	min_x = GetMinX(points);
+	max_y = GetMaxY(points);
+	min_y = GetMinY(points);
+	GLfloat center_x = ((max_x - min_x) / 2) + min_x;
+	GLfloat center_y = ((max_y - min_y) / 2) + min_y;
 	for(GLuint i = 0; i < points->size(); i++)
 	{
 		if(((i + 1) % 2))
@@ -219,27 +300,14 @@ void CenterVertices(vector<GLfloat> *points)
 
 void NormalizeVertices(vector<GLfloat> *points)
 {
-	vector<GLfloat> tmp_vec_x;
-	for(GLuint i = 0; i < points->size(); i++)
-	{
-		if(((i + 1) % 2))
-			tmp_vec_x.push_back(points->at(i));
-	}
-	vector<GLfloat> tmp_vec_y;
-	for(GLuint i = 0; i < points->size(); i++)
-	{
-		if(!((i + 1) % 2))
-			tmp_vec_y.push_back(points->at(i));
-	}
+	GLfloat min_x, max_x, min_y, max_y;
+	max_x = GetMaxX(points);
+	min_x = GetMinX(points);
+	max_y = GetMaxY(points);
+	min_y = GetMinY(points);
 
-	vector<GLfloat>::const_iterator it_max_x, it_min_x, it_max_y, it_min_y;
-	it_max_x = max_element(tmp_vec_x.begin(), tmp_vec_x.end());
-	it_min_x = min_element(tmp_vec_x.begin(), tmp_vec_x.end());
-	it_max_y = max_element(tmp_vec_y.begin(), tmp_vec_y.end());
-	it_min_y = min_element(tmp_vec_y.begin(), tmp_vec_y.end());
-
-	GLfloat scale_x = fabs(*it_max_x) > fabs(*it_min_x) ? fabs(*it_max_x) : fabs(*it_min_x);
-	GLfloat scale_y = fabs(*it_max_y) > fabs(*it_min_y) ? fabs(*it_max_y) : fabs(*it_min_y);
+	GLfloat scale_x = fabs(max_x) > fabs(min_x) ? fabs(max_x) : fabs(min_x);
+	GLfloat scale_y = fabs(max_y) > fabs(min_y) ? fabs(max_y) : fabs(min_y);
 	GLfloat scale = scale_x > scale_y ? scale_x : scale_y;
 
 	if(scale != 0)
@@ -390,10 +458,10 @@ enum SegmentDegree
 	CUBIC
 };
 
-bool InitializeName(MyGeometry *geometry, MyGlyph *name)
+bool InitializeWord(MyGeometry *geometry, MyGlyph *name, GLuint word_size)
 {
 	GLfloat x_alignment = 0;
-    for(GLuint i = 0; i < NAME_SIZE; i++)
+    for(GLuint i = 0; i < word_size; i++)
     {   GLfloat max_x = -std::numeric_limits<float>::max();
     	for(GLuint j = 0; j < name[i].contours.size(); j++)
     	{
@@ -439,6 +507,81 @@ bool InitializeName(MyGeometry *geometry, MyGlyph *name)
 	return BindGeometryBuffers(geometry, &vertices, &colours, &control_vertices);
 }
 
+void InitializeWordAppend(MyGlyph *name, GLuint word_size, GLfloat &x_alignment)
+{
+    for(GLuint i = 0; i < word_size; i++)
+    {   GLfloat max_x = -std::numeric_limits<float>::max();
+    	for(GLuint j = 0; j < name[i].contours.size(); j++)
+    	{
+    		for(GLuint k = 0; k < name[i].contours[j].size(); k++)
+    		{
+    			GLuint degree = name[i].contours[j][k].degree;
+    			MySegment segment = name[i].contours[j][k];
+    			switch(degree)
+    			{
+    			case POINT:
+                    PointBezierVertices(segment.x[0] + x_alignment, segment.y[0]);
+    				break;
+    			case LINE:
+    				LineBezierVertices(segment.x[0] + x_alignment, segment.y[0], segment.x[1] + x_alignment, segment.y[1]);
+    				break;
+    			case QUAD:
+    				QuadraticBezierVertices(segment.x[0] + x_alignment, segment.y[0], segment.x[1] + x_alignment, segment.y[1], segment.x[2] + x_alignment, segment.y[2]);
+    				break;
+    			case CUBIC:
+    				CubicBezierVertices(segment.x[0] + x_alignment, segment.y[0], segment.x[1] + x_alignment, segment.y[1], segment.x[2] + x_alignment, segment.y[2], segment.x[3] + x_alignment, segment.y[3]);
+    				break;
+    			}
+
+    			for(GLuint l = 0; l < segment.degree; l++)
+    			{
+    				if (segment.x[l] > max_x)
+    				{
+    					max_x = segment.x[l];
+    				}
+    			}
+    		}
+    	}
+    	x_alignment += (max_x + 0.05*0.7);
+    }
+}
+
+bool InitializeSentence(MyGeometry *geometry, GlyphExtractor *ge, char *sentence, ScrollScene font)
+{
+	char *tmp, *sentence_ptr;
+	sentence_ptr = sentence;
+	tmp = sentence;
+	GLfloat alignment = 0.0;
+
+	while(*tmp != '\0')
+	{
+	    GLuint word_size = 0;
+	    for (; *tmp != '.' && *tmp != ' '; tmp++) {
+	    	word_size++;
+	    }
+
+	    char word[word_size + 1];
+	    memcpy(word, sentence_ptr, word_size);
+	    word[word_size] = '\0';
+	    sentence_ptr += word_size + 1;
+
+        MyGlyph glyph_word[word_size];
+        for(GLuint i = 0; i < word_size; i++) { glyph_word[i] =  ge->ExtractGlyph(word[i]); }
+
+        InitializeWordAppend(glyph_word, word_size, alignment);
+        alignment += 0.25;
+
+        tmp++;
+	}
+
+    CenterYVertices(&vertices);
+    ScaleVertices(&vertices, 0.7);
+    max_x[font] = GetMaxX(&vertices);
+    geometry->elementCount = vertices.size()/2;
+    geometry->controlElementCount = control_vertices.size()/2;
+	return BindGeometryBuffers(geometry, &vertices, &colours, &control_vertices);
+}
+
 // deallocate geometry-related objects
 void DestroyGeometry(MyGeometry *geometry)
 {
@@ -450,7 +593,26 @@ void DestroyGeometry(MyGeometry *geometry)
 }
 
 // --------------------------------------------------------------------------
-// Rendering function that draws our scene to the frame buffer
+// Rendering functions that draw our scene to the frame buffer
+
+void GetScrollRate()
+{
+    GLfloat currentTime;
+	// Measure speed
+    currentTime = glfwGetTime();
+
+    scroll_pos += SCROLL_SPEED/(1/GLfloat(currentTime - lastTime));
+    cout << "scroll_pos: " << scroll_pos << endl;
+
+    if(scene == SCROLLING_TEXT)
+    {
+    	if((max_x[scroll_scene] - scroll_pos) < -1.0)
+    	{
+    		scroll_pos = -1.0;
+    	}
+    }
+
+}
 
 void RenderBezierCurves(MyGeometry *geometry, MyShader *shader)
 {
@@ -465,6 +627,7 @@ void RenderBezierCurves(MyGeometry *geometry, MyShader *shader)
     glUniform1i(glGetUniformLocation(shader->tessProgram, "control_lines"), false);
     glPatchParameteri(GL_PATCH_VERTICES, 4);
     glBindVertexArray(geometry->vertexArray);
+    glUniform1f(glGetUniformLocation(shader->tessProgram, "scroll_pos"), scroll_pos);
     glDrawArrays(GL_PATCHES, 0, geometry->elementCount);
 
     // reset state to default (no shader or geometry bound)
@@ -475,7 +638,7 @@ void RenderBezierCurves(MyGeometry *geometry, MyShader *shader)
 void RenderControlPoints(MyGeometry *geometry, MyShader *shader)
 {
     // Draw control points and polygons for bezier curves
-    if(show_control_points)
+    if(show_control_points && scene != SCROLLING_TEXT)
     {
         glBindVertexArray(geometry->vertexArray);
         glUseProgram(shader->controlProgram);
@@ -530,12 +693,15 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		switch(key)
 		{
 		case GLFW_KEY_F1:
+			scroll_pos = 0.0;
 			scene = BEZIER;
 			break;
 		case GLFW_KEY_F2:
+			scroll_pos = 0.0;
 			scene = FONTS;
 			break;
 		case GLFW_KEY_F3:
+			scroll_pos = -1.0;
 			scene = SCROLLING_TEXT;
 			break;
 		case GLFW_KEY_UP:
@@ -618,8 +784,6 @@ int main(int argc, char *argv[])
     MyGlyph lora_name[NAME_SIZE];
     for(GLuint i = 0; i < NAME_SIZE; i++) { lora_name[i] =  ge->ExtractGlyph(name[i]); }
 
-    cout << "\n GLYPHS LOADED!";
-
     if(ge->LoadFontFile("CPSC453-A3-Fonts/SourceSansPro-Bold.otf"))
       cout << "font SourceSansPro-Bold.otf loaded" << endl;
     MyGlyph ssp_name[NAME_SIZE];
@@ -630,9 +794,11 @@ int main(int argc, char *argv[])
     MyGlyph alex_brush_name[NAME_SIZE];
     for(GLuint i = 0; i < NAME_SIZE; i++) { alex_brush_name[i] =  ge->ExtractGlyph(name[i]); }
 
+    char sentence[46] = "The quick brown fox jumps over the lazy dog.";
+
     // query and print out information about our OpenGL environment
     QueryGLVersion();
-    cout << "\n INIT BEZIER GEOMETRY!";
+
     // call function to create and fill buffers with geometry data for bezier scenes
     MyGeometry bezier_geometry[BEZIER_MAX];
     if (!InitializeQuadraticBezier(&bezier_geometry[BEZIER_QUADRATIC]))
@@ -641,16 +807,39 @@ int main(int argc, char *argv[])
     if (!InitializeCubicBezier(&bezier_geometry[BEZIER_CUBIC]))
         cout << "Program failed to intialize geometry!" << endl;
 
-    cout << "\n INIT NAME GEOMETRY!";
+
     // call function to create and fill buffers with geometry data for font scene
     MyGeometry name_geometry[FONT_MAX];
-    if (!InitializeName(&name_geometry[FONT_LORA], lora_name))
+    if (!InitializeWord(&name_geometry[FONT_LORA], lora_name, NAME_SIZE))
         cout << "Program failed to intialize geometry!" << endl;
 
-    if (!InitializeName(&name_geometry[FONT_SOURCE_SANS_PRO], ssp_name))
+    if (!InitializeWord(&name_geometry[FONT_SOURCE_SANS_PRO], ssp_name, NAME_SIZE))
         cout << "Program failed to intialize geometry!" << endl;
 
-    if (!InitializeName(&name_geometry[FONT_CUSTOM], alex_brush_name))
+    if (!InitializeWord(&name_geometry[FONT_CUSTOM], alex_brush_name, NAME_SIZE))
+        cout << "Program failed to intialize geometry!" << endl;
+
+
+    // call function to create and fill buffers with geometry data for font scene
+    MyGeometry scroll_geometry[SCROLL_MAX];
+
+    //Load sentence for scrolling text
+    if(ge->LoadFontFile("CPSC453-A3-Fonts/AlexBrush-Regular.ttf"))
+      cout << "font AlexBrush-Regular.ttf loaded" << endl;
+
+    if (!InitializeSentence(&scroll_geometry[SCROLL_ALEX_BRUSH], ge, sentence, SCROLL_ALEX_BRUSH))
+        cout << "Program failed to intialize geometry!" << endl;
+
+    if(ge->LoadFontFile("CPSC453-A3-Fonts/Inconsolata.otf"))
+      cout << "font Inconsolata.otf loaded" << endl;
+
+    if (!InitializeSentence(&scroll_geometry[SCROLL_INCONSOLATA], ge, sentence, SCROLL_INCONSOLATA))
+        cout << "Program failed to intialize geometry!" << endl;
+
+    if(ge->LoadFontFile("CPSC453-A3-Fonts/Lora-Bold.ttf"))
+      cout << "font Lora-Bold.ttf loaded" << endl;
+
+    if (!InitializeSentence(&scroll_geometry[SCROLL_CUSTOM], ge, sentence, SCROLL_CUSTOM))
         cout << "Program failed to intialize geometry!" << endl;
 
     // call function to load and compile shader programs
@@ -661,6 +850,7 @@ int main(int argc, char *argv[])
     }
 
     MyGeometry *geometry_select;
+
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -673,6 +863,11 @@ int main(int argc, char *argv[])
         case FONTS:
         	geometry_select = &name_geometry[font_scene];
         	break;
+        case SCROLLING_TEXT:
+        	// Get FPS to properly calculate scroll rate
+        	lastTime = glfwGetTime();
+        	geometry_select = &scroll_geometry[scroll_scene];
+        	break;
     	}
         RenderScene(geometry_select, &shader);
 
@@ -680,7 +875,9 @@ int main(int argc, char *argv[])
         glfwSwapBuffers(window);
 
         // sleep until next event before drawing again
-        glfwWaitEvents();
+        glfwPollEvents();
+        if (scene == SCROLLING_TEXT)
+          GetScrollRate();
     }
 
 	// clean up allocated resources before exit

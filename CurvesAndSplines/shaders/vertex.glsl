@@ -13,6 +13,7 @@ layout(location = 1) in vec3 VertexColour;
 layout(location = 2) in vec2 ControlPosition;
 uniform bool control_points;
 uniform bool control_lines;
+uniform float scroll_pos;
 
 // output to be interpolated between vertices and passed to the fragment stage
 out vec3 Colour;
@@ -22,7 +23,10 @@ void main()
     if(control_lines)
         gl_Position = vec4(ControlPosition, 0.0, 1.0);
     else
-        gl_Position = vec4(VertexPosition, 0.0, 1.0);
+    {
+        vec2 tmp = vec2((VertexPosition[0] - scroll_pos), VertexPosition[1]);
+        gl_Position = vec4(tmp, 0.0, 1.0);
+    }
 
     // assign output colour to be interpolated
     if(!control_points && !control_lines)

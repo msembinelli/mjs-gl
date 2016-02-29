@@ -6,6 +6,7 @@
 //We want to output lines aka an isoline
 layout(isolines) in;
 uniform uint bezier_scene;
+uniform float scroll_rate;
 
 patch in  vec3 patch_color;
       out vec3 Colour;
@@ -25,9 +26,9 @@ void main( )
     // set position of new vertex
     float u = gl_TessCoord.x;
     
-    
     if (bezier_scene == QUADRATIC_BEZIER)
 	    gl_Position = (1.0 - u)*((1.0 - u)*p0 + u*p1) + u*((1.0 - u)*p1 + u*p2);
 	else if (bezier_scene == CUBIC_BEZIER)
 	    gl_Position = (1.0 - u)*(1.0 - u)*(1.0 - u)*p0 + 3*(1.0 - u)*(1.0 - u)*u*p1 + 3*(1.0 - u)*u*u*p2 + u*u*u*p3;
+
 }
