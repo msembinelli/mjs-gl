@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 #include <cmath>
+#include <limits>
 
 // specify that we want the OpenGL core profile before including GLFW headers
 #define GLFW_INCLUDE_GLCOREARB
@@ -84,8 +85,10 @@ FontScene font_scene = FONT_LORA;
 ScrollScene scroll_scene = SCROLL_ALEX_BRUSH;
 
 bool show_control_points = true;
+bool lines_toggle = false;
 
 vector<GLfloat> vertices;
+vector<GLfloat> control_vertices;
 vector<GLfloat> colours;
 
 // --------------------------------------------------------------------------
@@ -163,30 +166,32 @@ struct MyGeometry
     // OpenGL names for array buffer objects, vertex array object
     GLuint  vertexBuffer;
     GLuint  colourBuffer;
+    GLuint  controlVertexBuffer;
     GLuint  vertexArray;
     GLsizei elementCount;
+    GLsizei controlElementCount;
 
     // initialize object names to zero (OpenGL reserved value)
-    MyGeometry() : vertexBuffer(0), colourBuffer(0), vertexArray(0), elementCount(0)
+    MyGeometry() : vertexBuffer(0), colourBuffer(0), controlVertexBuffer(0), vertexArray(0), elementCount(0), controlElementCount(0)
     {}
 };
 
 // --------------------------------------------------------------------------
 // Universal geometry functions
 
-void CenterVertices()
+void CenterVertices(vector<GLfloat> *points)
 {
 	vector<GLfloat> tmp_vec_x;
-	for(GLuint i = 0; i < vertices.size(); i++)
+	for(GLuint i = 0; i < points->size(); i++)
 	{
 		if(((i + 1) % 2))
-			tmp_vec_x.push_back(vertices[i]);
+			tmp_vec_x.push_back(points->at(i));
 	}
 	vector<GLfloat> tmp_vec_y;
-	for(GLuint i = 0; i < vertices.size(); i++)
+	for(GLuint i = 0; i < points->size(); i++)
 	{
 		if(!((i + 1) % 2))
-			tmp_vec_y.push_back(vertices[i]);
+			tmp_vec_y.push_back(points->at(i));
 	}
 
 	vector<GLfloat>::const_iterator it_max_x, it_min_x, it_max_y, it_min_y;
@@ -196,35 +201,35 @@ void CenterVertices()
 	it_min_y = min_element(tmp_vec_y.begin(), tmp_vec_y.end());
 	GLfloat center_x = ((*it_max_x - *it_min_x) / 2) + *it_min_x;
 	GLfloat center_y = ((*it_max_y - *it_min_y) / 2) + *it_min_y;
-	for(GLuint i = 0; i < vertices.size(); i++)
+	for(GLuint i = 0; i < points->size(); i++)
 	{
 		if(((i + 1) % 2))
 		{
 			if(center_x != 0)
-			    vertices[i] -= center_x;
+				points->at(i) -= center_x;
 		}
 		else
 		{
 			if(center_y != 0)
-			    vertices[i] -= center_y;
+				points->at(i) -= center_y;
 		}
 	}
 
 }
 
-void NormalizeVertices()
+void NormalizeVertices(vector<GLfloat> *points)
 {
 	vector<GLfloat> tmp_vec_x;
-	for(GLuint i = 0; i < vertices.size(); i++)
+	for(GLuint i = 0; i < points->size(); i++)
 	{
 		if(((i + 1) % 2))
-			tmp_vec_x.push_back(vertices[i]);
+			tmp_vec_x.push_back(points->at(i));
 	}
 	vector<GLfloat> tmp_vec_y;
-	for(GLuint i = 0; i < vertices.size(); i++)
+	for(GLuint i = 0; i < points->size(); i++)
 	{
 		if(!((i + 1) % 2))
-			tmp_vec_y.push_back(vertices[i]);
+			tmp_vec_y.push_back(points->at(i));
 	}
 
 	vector<GLfloat>::const_iterator it_max_x, it_min_x, it_max_y, it_min_y;
@@ -238,21 +243,21 @@ void NormalizeVertices()
 	GLfloat scale = scale_x > scale_y ? scale_x : scale_y;
 
 	if(scale != 0)
-	    for(GLuint i = 0; i < vertices.size(); i++){vertices[i] /= scale;}
+	    for(GLuint i = 0; i < points->size(); i++){points->at(i) /= scale;}
 
 }
 
-void AddControlPoint(GLfloat x, GLfloat y)
+void AddControlPoint(GLfloat x, GLfloat y, vector<GLfloat> *vertices_vec)
 {
-	vertices.push_back(x);
-	vertices.push_back(y);
+	vertices_vec->push_back(x);
+	vertices_vec->push_back(y);
 }
 
-void AddColour(GLfloat r, GLfloat g, GLfloat b)
+void AddColour(GLfloat r, GLfloat g, GLfloat b, vector<GLfloat> *colours_vec)
 {
-	colours.push_back(r);
-	colours.push_back(g);
-	colours.push_back(b);
+	colours_vec->push_back(r);
+	colours_vec->push_back(g);
+	colours_vec->push_back(b);
 }
 
 // --------------------------------------------------------------------------
@@ -260,14 +265,21 @@ void AddColour(GLfloat r, GLfloat g, GLfloat b)
 
 void CubicBezierVertices(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3, GLfloat x4, GLfloat y4)
 {
-	AddControlPoint(x1, y1);
-	AddColour(1.0, 0.0, 0.0);
-	AddControlPoint(x2, y2);
-	AddColour(0.0, 0.0, 1.0);
-	AddControlPoint(x3, y3);
-	AddColour(0.0, 0.0, 1.0);
-	AddControlPoint(x4, y4);
-	AddColour(1.0, 0.0, 0.0);
+	AddControlPoint(x1, y1, &vertices);
+	AddColour(1.0, 0.0, 0.0, &colours);
+	AddControlPoint(x2, y2, &vertices);
+	AddColour(0.0, 0.0, 1.0, &colours);
+	AddControlPoint(x3, y3, &vertices);
+	AddColour(0.0, 0.0, 1.0, &colours);
+	AddControlPoint(x4, y4, &vertices);
+	AddColour(1.0, 0.0, 0.0, &colours);
+
+	AddControlPoint(x1, y1, &control_vertices);
+	AddControlPoint(x2, y2, &control_vertices);
+	AddControlPoint(x2, y2, &control_vertices);
+	AddControlPoint(x3, y3, &control_vertices);
+	AddControlPoint(x3, y3, &control_vertices);
+	AddControlPoint(x4, y4, &control_vertices);
 }
 
 void QuadraticBezierVertices(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3)
@@ -277,7 +289,7 @@ void QuadraticBezierVertices(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLf
 
 void LineBezierVertices(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
 {
-	CubicBezierVertices(x1, y1, x2, y2, x1, y1, x2, y2);
+	CubicBezierVertices(x1, y1, x1, y1, x2, y2, x2, y2);
 }
 
 void PointBezierVertices(GLfloat x1, GLfloat y1)
@@ -285,10 +297,11 @@ void PointBezierVertices(GLfloat x1, GLfloat y1)
 	CubicBezierVertices(x1, y1, x1, y1, x1, y1, x1, y1);
 }
 
-bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vector<GLfloat> *colour_vec)
+bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vector<GLfloat> *colour_vec, vector<GLfloat> *control_vec)
 {
 	GLuint VERTEX_INDEX = 0;
 	GLuint COLOUR_INDEX = 1;
+	GLuint CONTROL_INDEX = 2;
 
 	// create an array buffer object for storing our vertices
 	glGenBuffers(1, &geometry->vertexBuffer);
@@ -299,6 +312,10 @@ bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vect
 	glGenBuffers(1, &geometry->colourBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
 	glBufferData(GL_ARRAY_BUFFER, colour_vec->size()*sizeof(GLfloat), colour_vec->data(), GL_STATIC_DRAW);
+
+	glGenBuffers(1, &geometry->controlVertexBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, geometry->controlVertexBuffer);
+	glBufferData(GL_ARRAY_BUFFER, control_vec->size()*sizeof(GLfloat), control_vec->data(), GL_STATIC_DRAW);
 
 	// create a vertex array object encapsulating all our vertex attributes
 	glGenVertexArrays(1, &geometry->vertexArray);
@@ -314,11 +331,17 @@ bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vect
 	glVertexAttribPointer(COLOUR_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(COLOUR_INDEX);
 
+	// associate the control array with the vertex array object
+	glBindBuffer(GL_ARRAY_BUFFER, geometry->controlVertexBuffer);
+	glVertexAttribPointer(CONTROL_INDEX, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(CONTROL_INDEX);
+
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
 	vertex_vec->clear();
 	colour_vec->clear();
+	control_vec->clear();
 
 	return !CheckGLErrors();
 }
@@ -331,11 +354,15 @@ bool InitializeCubicBezier(MyGeometry *geometry)
     CubicBezierVertices(5, 3, 3, 2, 3, 3, 5, 2);
     CubicBezierVertices(3, 2.2, 3.5, 2.7, 3.5, 3.3, 3, 3.8);
     CubicBezierVertices(2.8, 3.5, 2.4, 3.8, 2.4, 3.2, 2.8, 3.5);
-    CenterVertices();
-    NormalizeVertices();
+    CenterVertices(&vertices);
+    NormalizeVertices(&vertices);
+
+    CenterVertices(&control_vertices);
+    NormalizeVertices(&control_vertices);
 
     geometry->elementCount = vertices.size()/2;
-	return BindGeometryBuffers(geometry, &vertices, &colours);
+    geometry->controlElementCount = control_vertices.size()/2;
+	return BindGeometryBuffers(geometry, &vertices, &colours, &control_vertices);
 }
 
 bool InitializeQuadraticBezier(MyGeometry *geometry)
@@ -344,11 +371,15 @@ bool InitializeQuadraticBezier(MyGeometry *geometry)
 	QuadraticBezierVertices(0, -1, -2, -1, -1, 1);
 	QuadraticBezierVertices(-1, 1, 0, 1, 1, 1);
 	QuadraticBezierVertices(1.2, 0.5, 2.5, 1.0, 1.2, -0.4);
-    CenterVertices();
-    NormalizeVertices();
+    CenterVertices(&vertices);
+    NormalizeVertices(&vertices);
+
+    CenterVertices(&control_vertices);
+    NormalizeVertices(&control_vertices);
 
     geometry->elementCount = vertices.size()/2;
-	return BindGeometryBuffers(geometry, &vertices, &colours);
+    geometry->controlElementCount = control_vertices.size()/2;
+	return BindGeometryBuffers(geometry, &vertices, &colours, &control_vertices);
 }
 
 enum SegmentDegree
@@ -363,7 +394,7 @@ bool InitializeName(MyGeometry *geometry, MyGlyph *name)
 {
 	GLfloat x_alignment = 0;
     for(GLuint i = 0; i < NAME_SIZE; i++)
-    {   GLfloat max_x = -100000.0;
+    {   GLfloat max_x = -std::numeric_limits<float>::max();
     	for(GLuint j = 0; j < name[i].contours.size(); j++)
     	{
     		for(GLuint k = 0; k < name[i].contours[j].size(); k++)
@@ -394,16 +425,18 @@ bool InitializeName(MyGeometry *geometry, MyGlyph *name)
     				}
     			}
     		}
-
     	}
     	x_alignment += (max_x + 0.1);
     }
-    CenterVertices();
-    NormalizeVertices();
+    CenterVertices(&vertices);
+    NormalizeVertices(&vertices);
+
+    CenterVertices(&control_vertices);
+    NormalizeVertices(&control_vertices);
 
     geometry->elementCount = vertices.size()/2;
-	return BindGeometryBuffers(geometry, &vertices, &colours);
-	//return true;
+    geometry->controlElementCount = control_vertices.size()/2;
+	return BindGeometryBuffers(geometry, &vertices, &colours, &control_vertices);
 }
 
 // deallocate geometry-related objects
@@ -419,7 +452,7 @@ void DestroyGeometry(MyGeometry *geometry)
 // --------------------------------------------------------------------------
 // Rendering function that draws our scene to the frame buffer
 
-void RenderBezier(MyGeometry *geometry, MyShader *shader)
+void RenderBezierCurves(MyGeometry *geometry, MyShader *shader)
 {
     // bind our shader program and the vertex array object containing our
     // scene geometry, then tell OpenGL to draw our geometry
@@ -434,13 +467,21 @@ void RenderBezier(MyGeometry *geometry, MyShader *shader)
     glBindVertexArray(geometry->vertexArray);
     glDrawArrays(GL_PATCHES, 0, geometry->elementCount);
 
+    // reset state to default (no shader or geometry bound)
+    glBindVertexArray(0);
+    glUseProgram(0);
+}
+
+void RenderControlPoints(MyGeometry *geometry, MyShader *shader)
+{
     // Draw control points and polygons for bezier curves
     if(show_control_points)
     {
+        glBindVertexArray(geometry->vertexArray);
         glUseProgram(shader->controlProgram);
         glUniform1i(glGetUniformLocation(shader->controlProgram, "control_lines"), true);
         glUniform1i(glGetUniformLocation(shader->controlProgram, "control_points"), false);
-        glDrawArrays(GL_LINE_STRIP, 0, geometry->elementCount);
+        glDrawArrays(GL_LINES, 0, geometry->controlElementCount);
 
         glUniform1i(glGetUniformLocation(shader->controlProgram, "control_lines"), false);
         glUniform1i(glGetUniformLocation(shader->controlProgram, "control_points"), true);
@@ -449,15 +490,11 @@ void RenderBezier(MyGeometry *geometry, MyShader *shader)
 
 
         glDisable(GL_PROGRAM_POINT_SIZE);
-    }
-    // reset state to default (no shader or geometry bound)
-    glBindVertexArray(0);
-    glUseProgram(0);
-}
 
-void RenderName(MyGeometry *geometry, MyShader *shader)
-{
-    RenderBezier(geometry, shader);
+        // reset state to default (no shader or geometry bound)
+        glBindVertexArray(0);
+        glUseProgram(0);
+    }
 }
 
 void RenderScene(MyGeometry *geometry, MyShader *shader)
@@ -465,16 +502,8 @@ void RenderScene(MyGeometry *geometry, MyShader *shader)
     // clear screen to a dark grey colour
     //glClearColor(0.2, 0.2, 0.2, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
-
-    switch(scene)
-    {
-    case BEZIER:
-    	RenderBezier(geometry, shader);
-    	break;
-    case FONTS:
-    	RenderName(geometry, shader);
-    	break;
-    }
+    RenderBezierCurves(geometry, shader);
+    RenderControlPoints(geometry, shader);
 
     // check for an report any OpenGL errors
     CheckGLErrors();
