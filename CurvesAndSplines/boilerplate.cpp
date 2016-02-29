@@ -625,10 +625,10 @@ int main(int argc, char *argv[])
     MyGlyph ssp_name[NAME_SIZE];
     for(GLuint i = 0; i < NAME_SIZE; i++) { ssp_name[i] =  ge->ExtractGlyph(name[i]); }
 
-    if(ge->LoadFontFile("CPSC453-A3-Fonts/Inconsolata.otf"))
-      cout << "font Inconsolata.otf loaded" << endl;
-    MyGlyph inconsolata_name[NAME_SIZE];
-    for(GLuint i = 0; i < NAME_SIZE; i++) { inconsolata_name[i] =  ge->ExtractGlyph(name[i]); }
+    if(ge->LoadFontFile("CPSC453-A3-Fonts/AlexBrush-Regular.ttf"))
+      cout << "font AlexBrush-Regular.ttf loaded" << endl;
+    MyGlyph alex_brush_name[NAME_SIZE];
+    for(GLuint i = 0; i < NAME_SIZE; i++) { alex_brush_name[i] =  ge->ExtractGlyph(name[i]); }
 
     // query and print out information about our OpenGL environment
     QueryGLVersion();
@@ -650,7 +650,7 @@ int main(int argc, char *argv[])
     if (!InitializeName(&name_geometry[FONT_SOURCE_SANS_PRO], ssp_name))
         cout << "Program failed to intialize geometry!" << endl;
 
-    if (!InitializeName(&name_geometry[FONT_CUSTOM], inconsolata_name))
+    if (!InitializeName(&name_geometry[FONT_CUSTOM], alex_brush_name))
         cout << "Program failed to intialize geometry!" << endl;
 
     // call function to load and compile shader programs
