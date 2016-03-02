@@ -187,6 +187,7 @@ bool InitializeSquaresAndDiamonds(MyGeometry *geometry)
 	GLfloat sidelength = 1.80f;
 	GLfloat vertex = sidelength/2.0f;
 	
+  //TODO add ability for nested squares to change colour at different levels
 	AddLine(vertex, vertex, vertex, -vertex);
 	AddLine(vertex, -vertex, -vertex, -vertex);
 	AddLine(-vertex, -vertex, -vertex, vertex);
