@@ -589,7 +589,7 @@ int main(int argc, char *argv[])
     if(!InitializeTexture(&textures[PATTERN], "image5-pattern.png"))
         cout << "Failed to load texture!" << endl;
 	
-    if(!InitializeTexture(&textures[PATTERN], "image6-capstone.jpeg"))
+    if(!InitializeTexture(&textures[CAPSTONE], "image6-capstone.jpeg"))
         cout << "Failed to load texture!" << endl;
 
     // call function to create and fill buffers with geometry data
