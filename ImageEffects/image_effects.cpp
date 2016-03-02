@@ -426,6 +426,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 			image_type = CAPSTONE;
 			break;
 		case GLFW_KEY_LEFT:
+      //TODO fix rotation to be around origin
 			transformation.rotation += M_PI/12.0;
 			break;
 		case GLFW_KEY_RIGHT:
