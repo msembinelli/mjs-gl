@@ -12,7 +12,7 @@ uniform sampler2DRect texture;
 uniform mat3 colour_data;
 
 uniform int kernel[9];
-vec2 offsets[9] = {{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {0, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}};
+vec2 offsets[9] = vec2[](vec2(-1, -1), vec2(0, -1), vec2(1, -1), vec2(-1, 0), vec2(0, 0), vec2(1, 0), vec2(-1, 1), vec2(0, 1), vec2(1, 1));
 uniform uint filter_type;
 
 uniform uint gaussian_points;
