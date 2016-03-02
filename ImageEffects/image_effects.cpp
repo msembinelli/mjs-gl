@@ -510,6 +510,7 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 
 void mouseMoveCallback(GLFWwindow* window, double x, double y)
 {
+  //TODO fix jumping in image
 	if(pressed)
 	{
 	    transformation.x = ((x)/float(WINDOW_WIDTH)*2) - 1;
