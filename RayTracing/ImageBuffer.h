@@ -15,6 +15,7 @@
 
 #include <vector>
 #include <glm/vec3.hpp>
+#include <string>
 
 #ifndef GLFW_VERSION_MAJOR
 #define GLFW_INCLUDE_GLCOREARB

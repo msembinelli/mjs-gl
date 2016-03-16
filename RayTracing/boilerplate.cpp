@@ -20,6 +20,9 @@
 #define GLFW_INCLUDE_GLCOREARB
 #define GL_GLEXT_PROTOTYPES
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <Magick++.h>
+#include "ImageBuffer.h"
 
 using namespace std;
 
@@ -201,6 +204,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 
 int main(int argc, char *argv[])
 {   
+    Magick::InitializeMagick(NULL);
     // initialize the GLFW windowing system
     if (!glfwInit()) {
         cout << "ERROR: GLFW failed to initilize, TERMINATING" << endl;
@@ -240,11 +244,15 @@ int main(int argc, char *argv[])
     if (!InitializeGeometry(&geometry))
         cout << "Program failed to intialize geometry!" << endl;
 
+    ImageBuffer image;
+    image.Initialize();
+
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
     {
         // call function to draw our scene
-        RenderScene(&geometry, &shader);
+        //RenderScene(&geometry, &shader);
+        image.Render();
 
         // scene is rendered to the back buffer, so swap to front for display
         glfwSwapBuffers(window);
@@ -314,7 +322,7 @@ string LoadSource(const string &filename)
 {
     string source;
 
-    ifstream input(filename);
+    ifstream input(filename.c_str());
     if (input) {
         copy(istreambuf_iterator<char>(input),
              istreambuf_iterator<char>(),

@@ -15,10 +15,10 @@ README.txt
 How To Compile And Run
 =====================================================
 Build with g++:
-
+g++ *.cpp -lglfw -lGraphicsMagick++ -lGL -ldl -I/usr/include/GraphicsMagick -o Assignment4
 
 Run with:
-
+./Assignment4
 
 *Requires 
 =====================================================

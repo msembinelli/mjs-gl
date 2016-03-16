@@ -15,7 +15,7 @@
 // Date:    February-March 2016
 // ==========================================================================
 
-#include "imagebuffer.h"
+#include "ImageBuffer.h"
 
 #include <iostream>
 #include <glm/common.hpp>
