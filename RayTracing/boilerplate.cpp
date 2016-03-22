@@ -15,14 +15,17 @@
 #include <string>
 #include <iterator>
 #include <algorithm>
+#include <string>
 
 // specify that we want the OpenGL core profile before including GLFW headers
 #define GLFW_INCLUDE_GLCOREARB
 #define GL_GLEXT_PROTOTYPES
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
-#include <Magick++.h>
+#include <GraphicsMagick/Magick++.h>
 #include "ImageBuffer.h"
+#include "Primitives.h"
+#include "Scene.h"
 
 using namespace std;
 
@@ -32,7 +35,7 @@ enum Scenes
 	SCENE_TWO,
 	SCENE_THREE,
 	SCENE_MAX
-}
+};
 
 Scenes which_scene = SCENE_ONE;
 
@@ -128,7 +131,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 
 int main(int argc, char *argv[])
 {   
-    Magick::InitializeMagick(NULL);
+	Magick::InitializeMagick(NULL);
     // initialize the GLFW windowing system
     if (!glfwInit()) {
         cout << "ERROR: GLFW failed to initilize, TERMINATING" << endl;
@@ -164,10 +167,11 @@ int main(int argc, char *argv[])
     }
 
     Scene scenes[SCENE_MAX];
-	for(GLuint i = 0; i < SCENE_MAX; i++)
+	/*for(GLuint i = 0; i < SCENE_MAX; i++)
 	{
-		scenes[i].image.Initialize();
-	}
+		string filename = "scene" + std::to_string(i+1) + ".txt";
+		scenes[i].parse(filename);
+	}*/
 
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
