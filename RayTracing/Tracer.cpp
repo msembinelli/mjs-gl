@@ -40,7 +40,7 @@ void Tracer::trace(const Ray &ray, glm::vec3 *pixel_colour, GLuint recursion_dep
 	Ray lray(glm::vec3(0.0), glm::vec3(0.0));
 	glm::vec3 lcolour;
 	bool in_shadow = false;
-	/*for(GLuint i= 0; i < lights.size(); i++)
+	for(GLuint i= 0; i < lights.size(); i++)
 	{
 		lights.at(i)->generate_light_ray(intersection_point, &lray, &lcolour);
 	    for(GLuint i= 0; i < objects.size(); i++)
@@ -56,17 +56,19 @@ void Tracer::trace(const Ray &ray, glm::vec3 *pixel_colour, GLuint recursion_dep
 				break;
 	    	}
 	    }
-	}*/
+	}
 	if(!in_shadow)
 	{
-	    //*pixel_colour += shading(intersection_point, lray, lcolour);
-		pixel_colour->r = 1.0;
-		pixel_colour->g = 1.0;
-		pixel_colour->b = 1.0;
+	    *pixel_colour = shade(intersection_point, objects.at(intersect_obj_index), lray, lcolour);
 	}
 
 	//Handle mirror reflection
 
+}
+
+vec3 Tracer::shade(const vec3 &intersection, const Object *object, const Ray &ray, const vec3 &light_colour)
+{
+	
 }
 
 

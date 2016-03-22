@@ -71,29 +71,29 @@ void Scene::parse(string file)
       GLint end_pos = str.find('}', found_pos);
       if (object_names[i] == "light")
       {
-        float f1, f2, f3;
-        sscanf_s(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f}", &f1, &f2, &f3);
-		Light l(vec3(f1, f2, f3));
+        float f1, f2, f3, f4, f5, f6;
+        sscanf_s(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f}", &f1, &f2, &f3, &f4, &f5, &f6);
+		Light l(vec3(f1, f2, f3), vec3(f4, f5, f6));
 	    tracer.lights.push_back(&l);
       }
       else if (object_names[i] == "sphere")
       {
-        float c1, c2, c3, r;
-        sscanf_s(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f}", &c1, &c2, &c3, &r);
+        float c1, c2, c3, r, cr1, cr2, cr3, cs1, cs2, cs3, p;
+        sscanf_s(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f %f %f %f %f %f}", &c1, &c2, &c3, &r, &cr1, &cr2, &cr3, &cs1, &cs2, &cs3, &p);
 		Sphere s(vec3(c1, c2, c3), r);
 	    tracer.objects.push_back(&s);
       }
       else if (object_names[i] == "triangle")
       {
-        float f1, f2, f3, f4, f5, f6, f7, f8, f9;
-        sscanf_s(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f %f %f %f}", &f1, &f2, &f3, &f4, &f5, &f6, &f7, &f8, &f9);
+        float f1, f2, f3, f4, f5, f6, f7, f8, f9 cr1, cr2, cr3, cs1, cs2, cs3, p;
+        sscanf_s(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f}", &f1, &f2, &f3, &f4, &f5, &f6, &f7, &f8, &f9,  &cr1, &cr2, &cr3, &cs1, &cs2, &cs3, &p);
 		Triangle t(vec3(f1, f2, f3), vec3(f4, f5, f6), vec3(f7, f8, f9));
 	    tracer.objects.push_back(&t);
       }
       else if (object_names[i] == "plane")
       {
-        float n1, n2, n3, p1, p2, p3;
-        sscanf_s(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f}", &n1, &n2, &n3, &p1, &p2, &p3);
+        float n1, n2, n3, p1, p2, p3, cr1, cr2, cr3, cs1, cs2, cs3, p;
+        sscanf_s(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f %f %f %f %f %f %f %f}", &n1, &n2, &n3, &p1, &p2, &p3,  &cr1, &cr2, &cr3, &cs1, &cs2, &cs3, &p);
 		Plane p(vec3(n1, n2, n3) vec3(p1, p2, p3));
 	    tracer.objects.push_back(&p);
       }

@@ -24,7 +24,7 @@ class Tracer
 	    vector<Light*> lights;
 	    vector<Object*> objects;
 	    void trace(const Ray &ray, vec3 *colour, GLuint recursion_depth);
-	    vec3 shade(const Ray &ray, vec3 *colour);
+	    vec3 shade(const vec3 &intersection, const Object *object, const Ray &ray, const vec3 &light_colour);
 };
 
 

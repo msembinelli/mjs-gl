@@ -9,15 +9,16 @@ using namespace glm;
 class Object
 {
     public:
-	    vec3 colour;
-	    vec3 normal;
+	    vec3 diffuse_colour;
+		vec3 specular_colour;
+		GLfloat phong_exponent;
 	    virtual bool intersect(const Ray &ray, vec3 *point, GLfloat *t_val) = 0;
 };
 
 class Sphere : public Object
 {
 	public:
-	    Sphere(vec3 center_, GLfloat radius_);
+	    Sphere(vec3 center_, GLfloat radius_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_);
 	    bool intersect(const Ray &ray, vec3 *point, GLfloat *t_val);
 	private:
 		vec3 center;
@@ -27,7 +28,7 @@ class Sphere : public Object
 class Plane : public Object
 {
 	public:
-	    Plane(vec3 normal_, vec3 point_);
+	    Plane(vec3 normal_, vec3 point_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_);
 	    bool intersect(const Ray &ray, vec3 *point, GLfloat *t_val);
 	private:
 		vec3 normal;
@@ -37,8 +38,7 @@ class Plane : public Object
 class Triangle : public Object
 {
 	public:
-	    Triangle(vec3 p0_, vec3 p1_, vec3 p2_);
-		Triangle& operator=(const Triangle& other);
+	    Triangle(vec3 p0_, vec3 p1_, vec3 p2_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_);
 	    bool intersect(const Ray &ray, vec3 *point, GLfloat *t_val);
 	private:
 		vec3 p0, p1, p2;

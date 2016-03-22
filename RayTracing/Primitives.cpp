@@ -2,17 +2,20 @@
 #include "Primitives.h"
 using namespace std;
 
-Sphere::Sphere(vec3 center_, GLfloat radius_)
+Sphere::Sphere(vec3 center_, GLfloat radius_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_)
 {
     center = center_;
     radius = radius_;
+    diffuse_colour = diffuse_colour_;
+    specular_colour = specular_colour_;
+	phong_exponent = phong_exponent_;
 }
 
 bool Sphere::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
 {
 	GLfloat a = dot(ray.direction, ray.direction);
-	GLfloat b = 2*dot(ray.direction, -center);
-	GLfloat c = dot(-center, -center) - (radius*radius);
+	GLfloat b = 2*dot(ray.direction, -center) + 2*dot(ray.origin, ray.direction);
+	GLfloat c = 2*dot(ray.origin, -center) + dot(-center, -center) + dot(ray.origin, ray.origin) - (radius*radius);
 
 	// if discriminant is positive, intersection exists
 	GLfloat discriminant = (b*b) - (4*a*c);
@@ -30,16 +33,19 @@ bool Sphere::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
 	{
 		*t_val = t2;
 	}
-	*point = (*t_val * ray.direction);
+	*point = (*t_val * ray.direction) + ray.origin;
 
     return true;
 }
 
-Triangle::Triangle(vec3 p0_, vec3 p1_, vec3 p2_)
+Triangle::Triangle(vec3 p0_, vec3 p1_, vec3 p2_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_)
 {
 	p0 = p0_;
 	p1 = p1_;
 	p2 = p2_;
+    diffuse_colour = diffuse_colour_;
+    specular_colour = specular_colour_;
+	phong_exponent = phong_exponent_;
 }
 
 bool Triangle::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
@@ -51,7 +57,7 @@ bool Triangle::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
 	if(a == 0) //TODO handle line contained within plane?
 		return false;
     *t_val = w/a;
-    *point = (*t_val * ray.direction);
+    *point = (*t_val * ray.direction) + ray.origin;
 
     GLfloat xb_xa = p1.x - p0.x;
     GLfloat yb_ya = p1.y - p0.y;
@@ -75,10 +81,13 @@ bool Triangle::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
     return true;
 }
 
-Plane::Plane(vec3 normal_, vec3 point_)
+Plane::Plane(vec3 normal_, vec3 point_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_)
 {
 	normal = normal_;
 	point = point_;
+    diffuse_colour = diffuse_colour_;
+    specular_colour = specular_colour_;
+	phong_exponent = phong_exponent_;
 }
 
 bool Plane::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
@@ -88,7 +97,7 @@ bool Plane::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
 	if(a == 0) //TODO handle line contained within plane?
 		return false;
     *t_val = w/a;
-    *point = (*t_val * ray.direction);
+    *point = (*t_val * ray.direction) + ray.origin;
 
     return true;
 }
