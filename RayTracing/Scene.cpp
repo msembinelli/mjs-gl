@@ -14,6 +14,7 @@
 
 #include <fstream>
 #include <vector>
+#include <streambuf>
 
 using namespace glm;
 using namespace std;
@@ -26,15 +27,6 @@ Scene::Scene()
 void Scene::draw()
 {
 	Camera camera(60); // 60 degree FOV
-	Light l(vec3(0, 2.5, -7.75));
-	tracer.lights.push_back(&l);
-
-	Sphere s(vec3(0.9, -1.925, -6.69), 0.825);
-	tracer.objects.push_back(&s);
-	Triangle t1(vec3(-0.4, -2.75, -9.55), vec3(-0.93, 0.55, -8.51), vec3(0.11, -2.75, -7.98));
-	tracer.objects.push_back(&t1);
-	Triangle t2(vec3(0.11, -2.75, -7.98), vec3(-0.93, 0.55, -8.51), vec3(-1.46, -2.75, -7.47));
-	tracer.objects.push_back(&t2);
 
 	// Loop through each pixel finding the direction vector
 	for(GLint y = 0; y < WINDOW_HEIGHT; y++)
@@ -57,52 +49,58 @@ void Scene::commit()
 	image.Render();
 }
 
-/*enum PrimitiveState
-{
-	LIGHT,
-	SPHERE,
-	TRIANGLE,
-	PLANE,
-	PRIMITIVE_MAX
-};
-
-enum BracketState
-{
-	LIGHT,
-	SPHERE,
-	TRIANGLE,
-	PLANE,
-	PRIMITIVE_MAX
-};
-
 void Scene::parse(string file)
 {
-	ifstream input(file.c_str());
-	PrimitiveState parse_state = PRIMITIVE_MAX;
-    for(string line; getline(input, line);)
+  ifstream input(file.c_str());
+  string str, line;
+  while (getline(input, line))
+  {
+    if (line.compare("\n") == 0 || line[0] == '#')
     {
-    	if(line.compare("\n") == 0 || line[0] == '#')
-    	{
-    		continue;
-    	}
-        if(line.find("light") != std::string::npos)
-        {
-        	parse_state = LIGHT;
-        }
-        else if(line.find("sphere") != std::string::npos)
-        {
-        	parse_state = SPHERE;
-        }
-        else if(line.find("triangle") != std::string::npos)
-        {
-        	parse_state = TRIANGLE;
-        }
-        else if(line.find("plane") != std::string::npos)
-        {
-        	parse_state = PLANE;
-        }
+      continue;
     }
-}*/
+    str += line;
+  }
+  string object_names[4] = { "light", "sphere", "triangle", "plane" };
+  for (GLint i = 0; i < 4; i++)
+  {
+    GLint starting_pos = 0;
+    GLint found_pos = 0;
+    while ((found_pos = str.find(object_names[i], starting_pos)) != std::string::npos)
+    {
+      GLint end_pos = str.find('}', found_pos);
+      if (object_names[i] == "light")
+      {
+        float f1, f2, f3;
+        sscanf_s(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f}", &f1, &f2, &f3);
+		Light l(vec3(f1, f2, f3));
+	    tracer.lights.push_back(&l);
+      }
+      else if (object_names[i] == "sphere")
+      {
+        float c1, c2, c3, r;
+        sscanf_s(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f}", &c1, &c2, &c3, &r);
+		Sphere s(vec3(c1, c2, c3), r);
+	    tracer.objects.push_back(&s);
+      }
+      else if (object_names[i] == "triangle")
+      {
+        float f1, f2, f3, f4, f5, f6, f7, f8, f9;
+        sscanf_s(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f %f %f %f}", &f1, &f2, &f3, &f4, &f5, &f6, &f7, &f8, &f9);
+		Triangle t(vec3(f1, f2, f3), vec3(f4, f5, f6), vec3(f7, f8, f9));
+	    tracer.objects.push_back(&t);
+      }
+      else if (object_names[i] == "plane")
+      {
+        float n1, n2, n3, p1, p2, p3;
+        sscanf_s(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f}", &n1, &n2, &n3, &p1, &p2, &p3);
+		Plane p(vec3(n1, n2, n3) vec3(p1, p2, p3));
+	    tracer.objects.push_back(&p);
+      }
+      starting_pos = end_pos+1;
+    }
+  }
+}
 
 
 

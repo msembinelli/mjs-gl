@@ -167,11 +167,11 @@ int main(int argc, char *argv[])
     }
 
     Scene scenes[SCENE_MAX];
-	/*for(GLuint i = 0; i < SCENE_MAX; i++)
+	for(GLuint i = 0; i < SCENE_MAX; i++)
 	{
 		string filename = "scene" + std::to_string(i+1) + ".txt";
 		scenes[i].parse(filename);
-	}*/
+	}
 
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
