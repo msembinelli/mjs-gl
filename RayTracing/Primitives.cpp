@@ -48,6 +48,8 @@ bool Triangle::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
 
     GLfloat w = dot(-p0, normal);
     GLfloat a = dot(ray.direction, normal);
+	if(a == 0) //TODO handle line contained within plane?
+		return false;
     *t_val = w/a;
     *point = (*t_val * ray.direction);
 
@@ -69,6 +71,24 @@ bool Triangle::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
 
     if(alpha < 0)
     	return false;
+
+    return true;
+}
+
+Plane::Plane(vec3 normal_, vec3 point_)
+{
+	normal = normal_;
+	point = point_;
+}
+
+bool Plane::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
+{
+    GLfloat w = dot(-point, normal);
+    GLfloat a = dot(ray.direction, normal);
+	if(a == 0) //TODO handle line contained within plane?
+		return false;
+    *t_val = w/a;
+    *point = (*t_val * ray.direction);
 
     return true;
 }
