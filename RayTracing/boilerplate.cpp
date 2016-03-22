@@ -26,6 +26,16 @@
 
 using namespace std;
 
+enum Scenes
+{
+	SCENE_ONE,
+	SCENE_TWO,
+	SCENE_THREE,
+	SCENE_MAX
+}
+
+Scenes which_scene = SCENE_ONE;
+
 // --------------------------------------------------------------------------
 // OpenGL utility and support function prototypes
 
@@ -95,6 +105,22 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
+	
+	if(action == GLFW_PRESS)
+	{
+		switch(key)
+		{
+			case GLFW_KEY_1:
+			    which_scene = SCENE_ONE;
+				break;
+			case GLFW_KEY_2:
+			    which_scene = SCENE_TWO;
+				break;
+			case GLFW_KEY_3:
+			    which_scene = SCENE_THREE;
+				break;
+		}
+	}
 }
 
 // ==========================================================================
@@ -137,14 +163,18 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    ImageBuffer image;
-    image.Initialize();
+    Scene scenes[SCENE_MAX];
+	for(GLuint i = 0; i < SCENE_MAX; i++)
+	{
+		scenes[i].image.Initialize();
+	}
 
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
     {
         // call function to draw our scene
-        image.Render();
+		scenes[which_scene].draw();
+		scenes[which_scene].commit();
 
         // scene is rendered to the back buffer, so swap to front for display
         glfwSwapBuffers(window);
