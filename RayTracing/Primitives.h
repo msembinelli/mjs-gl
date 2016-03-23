@@ -9,6 +9,7 @@ using namespace glm;
 class Object
 {
     public:
+	    Object(vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_);
 	    vec3 diffuse_colour;
 		vec3 specular_colour;
 		GLfloat phong_exponent;

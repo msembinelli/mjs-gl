@@ -6,7 +6,7 @@
  */
 #include "Tracer.h"
 
-
+#include <iostream>
 void Tracer::trace(const Ray &ray, glm::vec3 *pixel_colour, GLuint recursion_depth)
 {
 	if(recursion_depth == 0)
@@ -38,7 +38,7 @@ void Tracer::trace(const Ray &ray, glm::vec3 *pixel_colour, GLuint recursion_dep
 	}
 
 	Ray lray(glm::vec3(0.0), glm::vec3(0.0));
-	glm::vec3 lcolour;
+	vec3 lcolour(0.0);
 	bool in_shadow = false;
 	for(GLuint i= 0; i < lights.size(); i++)
 	{
@@ -68,7 +68,8 @@ void Tracer::trace(const Ray &ray, glm::vec3 *pixel_colour, GLuint recursion_dep
 
 vec3 Tracer::shade(const vec3 &intersection, const Object *object, const Ray &ray, const vec3 &light_colour)
 {
-	
+
+	return object->diffuse_colour;
 }
 
 

@@ -2,13 +2,18 @@
 #include "Primitives.h"
 using namespace std;
 
+Object::Object(vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_)
+{
+    diffuse_colour = diffuse_colour_;
+    specular_colour = specular_colour_;
+    phong_exponent = phong_exponent_;
+}
+
 Sphere::Sphere(vec3 center_, GLfloat radius_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_)
+: Object(diffuse_colour_, specular_colour_, phong_exponent_)
 {
     center = center_;
     radius = radius_;
-    diffuse_colour = diffuse_colour_;
-    specular_colour = specular_colour_;
-	phong_exponent = phong_exponent_;
 }
 
 bool Sphere::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
@@ -39,60 +44,50 @@ bool Sphere::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
 }
 
 Triangle::Triangle(vec3 p0_, vec3 p1_, vec3 p2_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_)
+: Object(diffuse_colour_, specular_colour_, phong_exponent_)
 {
 	p0 = p0_;
 	p1 = p1_;
 	p2 = p2_;
-    diffuse_colour = diffuse_colour_;
-    specular_colour = specular_colour_;
-	phong_exponent = phong_exponent_;
 }
 
 bool Triangle::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
 {
-    vec3 normal = normalize(cross((p1 - p0), (p2 - p0)));
+	vec3 p0_p1 = (p1 - p0);
+	vec3 p0_p2 = (p2 - p0);
+	vec3 pvec = cross(ray.direction, p0_p2);
+	GLfloat det = dot(p0_p1, pvec);
 
-    GLfloat w = dot(-p0, normal);
-    GLfloat a = dot(ray.direction, normal);
-	if(a == 0) //TODO handle line contained within plane?
+	if(fabs(det) < numeric_limits<float>::epsilon())
 		return false;
-    *t_val = w/a;
-    *point = (*t_val * ray.direction) + ray.origin;
 
-    GLfloat xb_xa = p1.x - p0.x;
-    GLfloat yb_ya = p1.y - p0.y;
-    GLfloat xc_xa = p2.x - p0.x;
-    GLfloat yc_ya = p2.y - p0.y;
-    GLfloat xp_xa = point->x - p0.x;
-    GLfloat yp_ya = point->y - p0.y;
+	vec3 tvec = ray.origin - p0;
 
-    GLfloat denominator = determinant(mat2(xb_xa, xc_xa, yb_ya, yc_ya));
-    GLfloat a1 = determinant(mat2(xp_xa, xc_xa, yp_ya, yc_ya));
-    GLfloat a2 = determinant(mat2(xb_xa, xp_xa, yb_ya, yp_ya));
+	GLfloat gamma = dot(tvec, pvec) / det;
+	if(gamma < 0 || gamma > 1)
+		return false;
 
-    GLfloat beta = a1/denominator;
-    GLfloat sigma = a2/denominator;
+	vec3 qvec = cross(tvec, p0_p1);
+	GLfloat beta = dot(ray.direction, qvec) / det;
+	if(beta < 0 || beta + gamma > 1)
+		return false;
 
-    GLfloat alpha = 1 - beta - sigma;
-
-    if(alpha < 0)
-    	return false;
+	*t_val = dot(p0_p2, qvec) / det;
+	*point = (*t_val * ray.direction) + ray.origin;
 
     return true;
 }
 
 Plane::Plane(vec3 normal_, vec3 point_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_)
+: Object(diffuse_colour_, specular_colour_, phong_exponent_)
 {
 	normal = normal_;
 	point = point_;
-    diffuse_colour = diffuse_colour_;
-    specular_colour = specular_colour_;
-	phong_exponent = phong_exponent_;
 }
 
 bool Plane::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
 {
-    GLfloat w = dot(-point, normal);
+    GLfloat w = dot(this->point, normal);
     GLfloat a = dot(ray.direction, normal);
 	if(a == 0) //TODO handle line contained within plane?
 		return false;
