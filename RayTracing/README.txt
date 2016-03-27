@@ -51,5 +51,6 @@ Switch scenes by using keys 1, 2, 3
 
 EXTRA INFO
 =====================================================
+I used 2 late days for this assignment.
 =====================================================
 
