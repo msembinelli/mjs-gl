@@ -19,14 +19,17 @@
 using namespace glm;
 using namespace std;
 
+GLuint Scene::scene_count = 0;
+
 Scene::Scene()
 {
 	image.Initialize();
+	scene_id = scene_count++;
 }
 
 void Scene::draw()
 {
-	Camera camera(60); // 60 degree FOV
+	Camera camera(50); // 50 degree FOV
 
 	// Loop through each pixel finding the direction vector
 	for(GLint y = 0; y < WINDOW_HEIGHT; y++)
@@ -38,7 +41,7 @@ void Scene::draw()
 			Ray ray(vec3(0.0), vec3(0.0));
 
 			camera.generate_ray(x, y, &ray);
-			tracer.trace(ray, &pixel_colour, 1);
+			tracer.trace(ray, &pixel_colour, 10, -1);
 			// Set imagebuffer pixel colour
 			image.SetPixel(x, y, pixel_colour);
 		}
@@ -47,6 +50,10 @@ void Scene::draw()
 void Scene::commit()
 {
 	image.Render();
+	string filename = "scene";
+	filename.append(to_string(scene_id + 1));
+	filename.append(".png");
+	image.SaveToFile(filename);
 }
 
 void Scene::parse(string file)
@@ -78,23 +85,23 @@ void Scene::parse(string file)
       }
       else if (object_names[i] == "sphere")
       {
-        float c1, c2, c3, r, cr1, cr2, cr3, cs1, cs2, cs3, p;
-        sscanf(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f %f %f %f %f %f}", &c1, &c2, &c3, &r, &cr1, &cr2, &cr3, &cs1, &cs2, &cs3, &p);
-		Sphere *s = new Sphere(vec3(c1, c2, c3), r, vec3(cr1, cr2, cr3), vec3(cs1, cs2, cs3), p);
+        float c1, c2, c3, r, cr1, cr2, cr3, cs1, cs2, cs3, p, ref;
+        sscanf(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f %f %f %f %f %f %f}", &c1, &c2, &c3, &r, &cr1, &cr2, &cr3, &cs1, &cs2, &cs3, &p, &ref);
+		Sphere *s = new Sphere(vec3(c1, c2, c3), r, vec3(cr1, cr2, cr3), vec3(cs1, cs2, cs3), p, ref);
 	    tracer.objects.push_back(s);
       }
       else if (object_names[i] == "triangle")
       {
-        float f1, f2, f3, f4, f5, f6, f7, f8, f9, cr1, cr2, cr3, cs1, cs2, cs3, p;
-        sscanf(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f}", &f1, &f2, &f3, &f4, &f5, &f6, &f7, &f8, &f9, &cr1, &cr2, &cr3, &cs1, &cs2, &cs3, &p);
-		Triangle *t = new Triangle(vec3(f1, f2, f3), vec3(f4, f5, f6), vec3(f7, f8, f9), vec3(cr1, cr2, cr3), vec3(cs1, cs2, cs3), p);
+        float f1, f2, f3, f4, f5, f6, f7, f8, f9, cr1, cr2, cr3, cs1, cs2, cs3, p, r;
+        sscanf(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f}", &f1, &f2, &f3, &f4, &f5, &f6, &f7, &f8, &f9, &cr1, &cr2, &cr3, &cs1, &cs2, &cs3, &p, &r);
+		Triangle *t = new Triangle(vec3(f1, f2, f3), vec3(f4, f5, f6), vec3(f7, f8, f9), vec3(cr1, cr2, cr3), vec3(cs1, cs2, cs3), p, r);
 	    tracer.objects.push_back(t);
       }
       else if (object_names[i] == "plane")
       {
-        float n1, n2, n3, p1, p2, p3, cr1, cr2, cr3, cs1, cs2, cs3, p;
-        sscanf(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f %f %f %f %f %f %f %f}", &n1, &n2, &n3, &p1, &p2, &p3,  &cr1, &cr2, &cr3, &cs1, &cs2, &cs3, &p);
-		Plane *pl = new Plane(vec3(n1, n2, n3), vec3(p1, p2, p3), vec3(cr1, cr2, cr3), vec3(cs1, cs2, cs3), p);
+        float n1, n2, n3, p1, p2, p3, cr1, cr2, cr3, cs1, cs2, cs3, p, r;
+        sscanf(str.substr(found_pos, end_pos + 1).c_str(), "%*s { %f %f %f %f %f %f %f %f %f %f %f %f %f %f}", &n1, &n2, &n3, &p1, &p2, &p3,  &cr1, &cr2, &cr3, &cs1, &cs2, &cs3, &p, &r);
+		Plane *pl = new Plane(vec3(n1, n2, n3), vec3(p1, p2, p3), vec3(cr1, cr2, cr3), vec3(cs1, cs2, cs3), p, r);
 	    tracer.objects.push_back(pl);
       }
       starting_pos = end_pos+1;

@@ -2,15 +2,16 @@
 #include "Primitives.h"
 using namespace std;
 
-Object::Object(vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_)
+Object::Object(vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_, GLfloat reflectance_)
 {
     diffuse_colour = diffuse_colour_;
     specular_colour = specular_colour_;
     phong_exponent = phong_exponent_;
+    reflectance = reflectance_;
 }
 
-Sphere::Sphere(vec3 center_, GLfloat radius_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_)
-: Object(diffuse_colour_, specular_colour_, phong_exponent_)
+Sphere::Sphere(vec3 center_, GLfloat radius_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_, GLfloat reflectance_)
+: Object(diffuse_colour_, specular_colour_, phong_exponent_, reflectance_)
 {
     center = center_;
     radius = radius_;
@@ -28,8 +29,8 @@ bool Sphere::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
 	{
 		return false;
 	}
-	GLfloat t1 = (((-1*b) + sqrt(discriminant))/2*a);
-	GLfloat t2 = (((-1*b) - sqrt(discriminant))/2*a);
+	GLfloat t1 = (((-1*b) + sqrt(discriminant))/(2*a));
+	GLfloat t2 = (((-1*b) - sqrt(discriminant))/(2*a));
 	if(t1 < t2)
 	{
 		*t_val = t1;
@@ -43,8 +44,13 @@ bool Sphere::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
     return true;
 }
 
-Triangle::Triangle(vec3 p0_, vec3 p1_, vec3 p2_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_)
-: Object(diffuse_colour_, specular_colour_, phong_exponent_)
+vec3 Sphere::normal(const vec3 &intersection_point)
+{
+	return normalize(intersection_point - center);
+}
+
+Triangle::Triangle(vec3 p0_, vec3 p1_, vec3 p2_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_,  GLfloat reflectance_)
+: Object(diffuse_colour_, specular_colour_, phong_exponent_, reflectance_)
 {
 	p0 = p0_;
 	p1 = p1_;
@@ -69,7 +75,7 @@ bool Triangle::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
 
 	vec3 qvec = cross(tvec, p0_p1);
 	GLfloat beta = dot(ray.direction, qvec) / det;
-	if(beta < 0 || beta + gamma > 1)
+	if(beta < 0 || beta > (1 - gamma))
 		return false;
 
 	*t_val = dot(p0_p2, qvec) / det;
@@ -78,21 +84,33 @@ bool Triangle::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
     return true;
 }
 
-Plane::Plane(vec3 normal_, vec3 point_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_)
-: Object(diffuse_colour_, specular_colour_, phong_exponent_)
+vec3 Triangle::normal(const vec3 &intersection_point)
 {
-	normal = normal_;
+	return normalize(cross((p0 - p1), (p1 - p2)));
+}
+
+Plane::Plane(vec3 normal_, vec3 point_, vec3 diffuse_colour_, vec3 specular_colour_, GLfloat phong_exponent_,  GLfloat reflectance_)
+: Object(diffuse_colour_, specular_colour_, phong_exponent_, reflectance_)
+{
+	p_normal = normal_;
 	point = point_;
 }
 
 bool Plane::intersect(const Ray &ray, vec3 *point, GLfloat *t_val)
 {
-    GLfloat w = dot(this->point, normal);
-    GLfloat a = dot(ray.direction, normal);
-	if(a == 0) //TODO handle line contained within plane?
+    GLfloat w = dot(this->point - ray.origin, p_normal);
+    GLfloat a = dot(ray.direction, p_normal);
+	if(fabs(a) < numeric_limits<float>::epsilon())
 		return false;
     *t_val = w/a;
+    if(*t_val < 0)
+       return false;
     *point = (*t_val * ray.direction) + ray.origin;
 
     return true;
+}
+
+vec3 Plane::normal(const vec3 &intersection_point)
+{
+	return normalize(p_normal);
 }

@@ -17,7 +17,6 @@ class Light
 	public:
 	    Light(vec3 point_, vec3 intensity_);
 	    void generate_light_ray(const vec3 &scene_intersection, Ray *lray, vec3 *lcolour);
-	private:
         vec3 point;
 		vec3 intensity;
 };

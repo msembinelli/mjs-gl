@@ -16,12 +16,15 @@ using namespace std;
 class Scene
 {
 	public:
+        static GLuint scene_count;
 	    ImageBuffer image;
 	    Tracer tracer;
 	    Scene();
 	    void parse(string file);
 	    void draw();
 	    void commit();
+	private:
+	    GLuint scene_id;
 };
 
 #endif
