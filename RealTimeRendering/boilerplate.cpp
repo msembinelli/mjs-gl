@@ -278,10 +278,7 @@ int main(int argc, char *argv[])
       cout << "glewInit failed, aborting." << endl;
     }
     GLenum error;
-    while ((error = glGetError()) != GL_NO_ERROR)
-    {
-      // print(error), etc...
-    }
+    while ((error = glGetError()) != GL_NO_ERROR){}
 #endif
 
     // query and print out information about our OpenGL environment
@@ -314,19 +311,16 @@ int main(int argc, char *argv[])
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
     {
-	glUseProgram(shader.program);
-  CheckGLErrors();
+	      glUseProgram(shader.program);
 
         // call function to draw our scene
         RenderScene(&geometry, &shader);
-        CheckGLErrors();
+
         // scene is rendered to the back buffer, so swap to front for display
         glfwSwapBuffers(window);
-        CheckGLErrors();
 
         // sleep until next event before drawing again
         glfwPollEvents();
-        CheckGLErrors();
     }
 
     // clean up allocated resources before exit
