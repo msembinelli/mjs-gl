@@ -15,6 +15,7 @@
 #include <string>
 #include <iterator>
 #include <algorithm>
+#include <vector>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -24,9 +25,11 @@
 #if defined(_WIN32)
 #include <windows.h>
 #include <GL/glew.h>
+#define M_PI 3.14159
 #else
 #define GLFW_INCLUDE_GLCOREARB
 #define GL_GLEXT_PROTOTYPES
+#include <math.h>
 #endif
 
 // specify that we want the OpenGL core profile before including GLFW headers
@@ -53,7 +56,11 @@ GLuint projUniform;
 GLuint viewUniform;
 GLuint modelUniform;
 
-float angle = 0;
+GLfloat angle = 0;
+GLfloat lastTime = 0;
+GLfloat rotation_speed = 0.80;
+vector<GLfloat> vertices;
+vector<GLfloat> colours;
 
 
 // --------------------------------------------------------------------------
@@ -119,58 +126,132 @@ struct MyGeometry
     {}
 };
 
-// create buffers and fill with geometry data, returning true if successful
-bool InitializeGeometry(MyGeometry *geometry)
+// --------------------------------------------------------------------------
+// Functions to set up OpenGL buffers for storing geometry data
+
+bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vector<GLfloat> *colour_vec)
 {
-    // three vertex positions and assocated colours of a triangle
-    const GLfloat vertices[][3] = {
-        { -0.6, -0.4, 0},
-        {  0.6, -0.4, 0},
-        {  0.0,  0.6, 0}
-    };
-    const GLfloat colours[][3] = {
-        { 1.0, 0.0, 0.0 },
-        { 0.0, 1.0, 0.0 },
-        { 0.0, 0.0, 1.0 }
-    };
+  GLuint VERTEX_INDEX = 0;
+  GLuint COLOUR_INDEX = 1;
 
-    geometry->elementCount = 3;
+  // create an array buffer object for storing our vertices
+  glGenBuffers(1, &geometry->vertexBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
+  glBufferData(GL_ARRAY_BUFFER, vertex_vec->size()*sizeof(GLfloat), vertex_vec->data(), GL_STATIC_DRAW);
 
-    // these vertex attribute indices correspond to those specified for the
-    // input variables in the vertex shader
-    const GLuint VERTEX_INDEX = 0;
-    const GLuint COLOUR_INDEX = 1;
+  // create another one for storing our colours
+  glGenBuffers(1, &geometry->colourBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
+  glBufferData(GL_ARRAY_BUFFER, colour_vec->size()*sizeof(GLfloat), colour_vec->data(), GL_STATIC_DRAW);
 
-    // create an array buffer object for storing our vertices
-    glGenBuffers(1, &geometry->vertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+  // create a vertex array object encapsulating all our vertex attributes
+  glGenVertexArrays(1, &geometry->vertexArray);
+  glBindVertexArray(geometry->vertexArray);
 
-    // create another one for storing our colours
-    glGenBuffers(1, &geometry->colourBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(colours), colours, GL_STATIC_DRAW);
+  // associate the position array with the vertex array object
+  glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
+  glVertexAttribPointer(VERTEX_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
+  glEnableVertexAttribArray(VERTEX_INDEX);
 
-    // create a vertex array object encapsulating all our vertex attributes
-    glGenVertexArrays(1, &geometry->vertexArray);
-    glBindVertexArray(geometry->vertexArray);
+  // associate the colour array with the vertex array object
+  glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
+  glVertexAttribPointer(COLOUR_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
+  glEnableVertexAttribArray(COLOUR_INDEX);
 
-    // associate the position array with the vertex array object
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->vertexBuffer);
-    glVertexAttribPointer(VERTEX_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(VERTEX_INDEX);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
 
-    // assocaite the colour array with the vertex array object
-    glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
-    glVertexAttribPointer(COLOUR_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(COLOUR_INDEX);
+  return !CheckGLErrors();
+}
 
-    // unbind our buffers, resetting to default state
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+// --------------------------------------------------------------------------
+// Functions to push primitives vertex and colour data onto vector
 
-    // check for OpenGL errors and return false if error occurred
-    return !CheckGLErrors();
+void AddVertex(GLfloat x, GLfloat y, GLfloat z)
+{
+  vertices.push_back(x);
+  vertices.push_back(y);
+  vertices.push_back(z);
+}
+
+void AddColour(GLfloat r, GLfloat g, GLfloat b)
+{
+  colours.push_back(r);
+  colours.push_back(g);
+  colours.push_back(b);
+}
+
+void AddLine(GLfloat x1, GLfloat y1, GLfloat z1, GLfloat x2, GLfloat y2, GLfloat z2)
+{
+  AddVertex(x1, y1, z1);
+  AddVertex(x2, y2, z2);
+}
+
+void AddLineColour(GLfloat r1, GLfloat g1, GLfloat b1, GLfloat r2, GLfloat g2, GLfloat b2)
+{
+  AddColour(r1, g1, b1);
+  AddColour(r2, g2, b2);
+}
+
+void AddTriangle(GLfloat x1, GLfloat y1, GLfloat z1, GLfloat x2, GLfloat y2, GLfloat z2, GLfloat x3, GLfloat y3, GLfloat z3)
+{
+  AddVertex(x1, y1, z1);
+  AddVertex(x2, y2, z2);
+  AddVertex(x3, y3, z3);
+}
+
+void AddTriangleColour(GLfloat r1, GLfloat g1, GLfloat b1, GLfloat r2, GLfloat g2, GLfloat b2, GLfloat r3, GLfloat g3, GLfloat b3)
+{
+  AddColour(r1, g1, b1);
+  AddColour(r2, g2, b2);
+  AddColour(r3, g3, b3);
+}
+
+bool InitializeSphere(MyGeometry *geometry)
+{
+  GLfloat step_size = (M_PI / 36.0);
+
+  for (GLfloat altitude = 0.0; altitude <= M_PI; altitude += (step_size))
+  {
+      for (GLfloat azimuth = 0.0; azimuth <= (2 * M_PI); azimuth += (step_size))
+      {
+          GLfloat x1 = glm::sin(altitude)*glm::cos(azimuth);
+          GLfloat y1 = glm::sin(altitude)*glm::sin(azimuth);
+          GLfloat z1 = glm::cos(altitude);
+
+          GLfloat x2 = glm::sin(altitude)*glm::cos(azimuth + (step_size));
+          GLfloat y2 = glm::sin(altitude)*glm::sin(azimuth + (step_size));
+          GLfloat z2 = glm::cos(altitude);
+
+          GLfloat x3 = glm::sin(altitude + (step_size))*glm::cos(azimuth + (step_size));
+          GLfloat y3 = glm::sin(altitude + (step_size))*glm::sin(azimuth + (step_size));
+          GLfloat z3 = glm::cos(altitude + (step_size));
+
+          AddTriangle(x1, y1, z1, x2, y2, z2, x3, y3, z3);
+          AddTriangleColour(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+
+          x2 = glm::sin(altitude + (step_size))*glm::cos(azimuth);
+          y2 = glm::sin(altitude + (step_size))*glm::sin(azimuth);
+          z2 = glm::cos(altitude + (step_size));
+
+          AddTriangle(x1, y1, z1, x2, y2, z2, x3, y3, z3);
+          AddTriangleColour(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+
+      }
+  }
+
+  geometry->elementCount = vertices.size() / 3;
+
+  return BindGeometryBuffers(geometry, &vertices, &colours);
+}
+
+void GetRotationRate()
+{
+  GLfloat currentTime;
+
+  currentTime = glfwGetTime();
+
+  angle += rotation_speed / (1 / GLfloat(currentTime - lastTime));
 }
 
 // deallocate geometry-related objects
@@ -205,9 +286,12 @@ void RenderScene(MyGeometry *geometry, MyShader *shader)
     setTransformationUniform(modelUniform, glm::rotate(glm::translate(
                                            glm::rotate(angle, glm::vec3(0,1,0)),
                                            glm::vec3(1,0,0)), angle *2.f, glm::vec3(0,1,0)));
-    angle += .01f;
+
     glBindVertexArray(geometry->vertexArray);
     glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
+
+    vertices.clear();
+    colours.clear();
 
     // reset state to default (no shader or geometry bound)
     glBindVertexArray(0);
@@ -305,13 +389,15 @@ int main(int argc, char *argv[])
 
     // call function to create and fill buffers with geometry data
     MyGeometry geometry;
-    if (!InitializeGeometry(&geometry))
-        cout << "Program failed to intialize geometry!" << endl;
+    /*if (!InitializeGeometry(&geometry))
+        cout << "Program failed to intialize geometry!" << endl;*/
+    if (!InitializeSphere(&geometry))
+      cout << "Program failed to intialize geometry!" << endl;
 
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
     {
-	      glUseProgram(shader.program);
+        lastTime = glfwGetTime();
 
         // call function to draw our scene
         RenderScene(&geometry, &shader);
@@ -321,6 +407,8 @@ int main(int argc, char *argv[])
 
         // sleep until next event before drawing again
         glfwPollEvents();
+
+        GetRotationRate();
     }
 
     // clean up allocated resources before exit
