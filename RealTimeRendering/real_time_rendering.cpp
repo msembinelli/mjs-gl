@@ -58,17 +58,58 @@ GLuint modelUniform;
 
 #define WINDOW_WIDTH 512
 #define WINDOW_HEIGHT 512
+#define MAX_CAMERA_RADIUS 50.0
+#define MIN_CAMERA_RADIUS 5.0
+#define SPHERE_ANGLE_SIZE (M_PI / 12.0);
 
 GLfloat angle = 0;
 GLfloat view_azimuth = 0.0;
 GLfloat view_altitude = M_PI / 3.0;
-GLfloat view_radius = 3.0;
+GLfloat view_radius = 19.0;
 GLfloat lastTime = 0;
 GLfloat rotation_speed = 0.80;
 vector<GLfloat> vertices;
 vector<GLfloat> colours;
 int mouse_button = GLFW_KEY_UNKNOWN;
 bool mouse_press = false;
+
+class CelestialBody
+{
+  public:
+    CelestialBody(glm::vec3 origin_, GLfloat scale_, GLfloat revolution_rate_, GLfloat rotational_rate_, CelestialBody *satellite_ = NULL);
+    glm::mat4 GenerateTransformationMatrix(glm::mat4 previous_model);
+    CelestialBody* GetChildSatellite();
+  private:
+    GLfloat scale;
+    glm::vec3 origin; //relative to parent body
+    GLfloat revolution_rate; //relative to parent body
+    GLfloat rotational_rate; //relative to parent body
+    CelestialBody *satellite;
+};
+
+CelestialBody::CelestialBody(glm::vec3 origin_, GLfloat scale_, GLfloat revolution_rate_, GLfloat rotational_rate_, CelestialBody *satellite_)
+{
+  origin = origin_;
+  scale = scale_;
+  revolution_rate = revolution_rate_;
+  rotational_rate = rotational_rate_;
+  satellite = satellite_;
+}
+glm::mat4 CelestialBody::GenerateTransformationMatrix(glm::mat4 previous_model)
+{
+  glm::mat4 model;
+  //model = glm::scale(previous_model, glm::vec3(scale));
+  model = glm::rotate(previous_model, revolution_rate * angle, glm::vec3(0, 1, 0));
+  model = glm::scale(model, glm::vec3(scale));
+  model = glm::translate(model, origin);
+  model = glm::rotate(model, rotational_rate * angle, glm::vec3(0, 1, 0));
+  //model = glm::scale(model, glm::vec3(scale));
+  return model;
+}
+CelestialBody* CelestialBody::GetChildSatellite()
+{
+  return satellite;
+}
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL shader programs for rendering
@@ -216,13 +257,12 @@ void AddTriangleColour(GLfloat r1, GLfloat g1, GLfloat b1, GLfloat r2, GLfloat g
 
 glm::vec3 SphericalToCartesian(GLfloat altitude, GLfloat azimuth, GLfloat radius = 1.0)
 {
-  //return glm::vec3(radius*glm::sin(altitude)*glm::cos(azimuth), radius*glm::sin(altitude)*glm::sin(azimuth), radius*glm::cos(altitude));
   return glm::vec3(radius*glm::sin(altitude)*glm::cos(azimuth), radius*glm::cos(altitude), radius*glm::sin(altitude)*glm::sin(azimuth));
 }
 
 bool InitializeSphere(MyGeometry *geometry)
 {
-  GLfloat step_size = (M_PI / 24.0);
+  GLfloat step_size = SPHERE_ANGLE_SIZE;
 
   for (GLfloat altitude = 0.0; altitude <= M_PI; altitude += (step_size))
   {
@@ -275,7 +315,7 @@ void setTransformationUniform(GLuint uniform, glm::mat4 mat)
 // --------------------------------------------------------------------------
 // Rendering function that draws our scene to the frame buffer
 
-void RenderScene(MyGeometry *geometry, MyShader *shader)
+void RenderScene(MyGeometry *geometry, MyShader *shader, CelestialBody *body_graph)
 {
     // clear screen to a dark grey colour
     glClearColor(0.2, 0.2, 0.2, 1.0);
@@ -286,13 +326,21 @@ void RenderScene(MyGeometry *geometry, MyShader *shader)
     glUseProgram(shader->program);
 
     // Update model uniform and update angle  ======================
-    setTransformationUniform(modelUniform, glm::rotate(glm::translate(
-                                           glm::rotate(angle, glm::vec3(0,1,0)),
-                                           glm::vec3(1,0,0)), angle *2.f, glm::vec3(0,1,0)));
+    //glm::mat4 m1 = glm::mat4(glm::rotate(glm::translate(glm::rotate(angle, glm::vec3(0, 1, 0)), glm::vec3(1, 0, 0)), angle *2.f, glm::vec3(0, 1, 0)));
+   // setTransformationUniform(modelUniform, m1);
 
     glBindVertexArray(geometry->vertexArray);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
+    CelestialBody *body = body_graph;
+    glm::mat4 last_model(1.f);
+    while (body != NULL)
+    {
+      glm::mat4 model = body->GenerateTransformationMatrix(last_model);
+      setTransformationUniform(modelUniform, model);
+      last_model = model;
+      glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
+      body = body->GetChildSatellite();
+    }
 
     vertices.clear();
     colours.clear();
@@ -362,9 +410,9 @@ void MouseMoveCallback(GLFWwindow* window, double x, double y)
 
 void MouseScrollwheelCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    if (yoffset == 1 && view_radius > 2.0)
+    if (yoffset == 1 && view_radius > MIN_CAMERA_RADIUS)
       view_radius -= 1.0;
-    else if (yoffset == -1 && view_radius <= 15.0)
+    else if (yoffset == -1 && view_radius <= MAX_CAMERA_RADIUS)
       view_radius += 1.0;
 }
 
@@ -440,11 +488,15 @@ int main(int argc, char *argv[])
     setTransformationUniform(modelUniform, I);
 
     // call function to create and fill buffers with geometry data
-    MyGeometry geometry;
+    MyGeometry sphere;
     /*if (!InitializeGeometry(&geometry))
         cout << "Program failed to intialize geometry!" << endl;*/
-    if (!InitializeSphere(&geometry))
+    if (!InitializeSphere(&sphere))
       cout << "Program failed to intialize geometry!" << endl;
+
+    CelestialBody moon = CelestialBody(glm::vec3(log10(3.703E05), 0.0, 0.0), 0.27, 1.0, 2.f);
+    CelestialBody earth = CelestialBody(glm::vec3(log10(1.496E08), 0.0, 0.0), 1.0, 1.0, 2.f, &moon);
+    CelestialBody sun = CelestialBody(glm::vec3(0.0), log(109), 0.0, 0.0, &earth);
 
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
@@ -455,7 +507,7 @@ int main(int argc, char *argv[])
         setTransformationUniform(viewUniform, glm::lookAt(SphericalToCartesian(view_altitude, view_azimuth, view_radius), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
 
         // call function to draw our scene
-        RenderScene(&geometry, &shader);
+        RenderScene(&sphere, &shader, &sun);
 
         // scene is rendered to the back buffer, so swap to front for display
         glfwSwapBuffers(window);
@@ -467,7 +519,7 @@ int main(int argc, char *argv[])
     }
 
     // clean up allocated resources before exit
-    DestroyGeometry(&geometry);
+    DestroyGeometry(&sphere);
     DestroyShaders(&shader);
     glfwDestroyWindow(window);
     glfwTerminate();
