@@ -56,12 +56,19 @@ GLuint projUniform;
 GLuint viewUniform;
 GLuint modelUniform;
 
+#define WINDOW_WIDTH 512
+#define WINDOW_HEIGHT 512
+
 GLfloat angle = 0;
+GLfloat view_azimuth = 0.0;
+GLfloat view_altitude = M_PI / 3.0;
+GLfloat view_radius = 3.0;
 GLfloat lastTime = 0;
 GLfloat rotation_speed = 0.80;
 vector<GLfloat> vertices;
 vector<GLfloat> colours;
-
+int mouse_button = GLFW_KEY_UNKNOWN;
+bool mouse_press = false;
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL shader programs for rendering
@@ -207,34 +214,30 @@ void AddTriangleColour(GLfloat r1, GLfloat g1, GLfloat b1, GLfloat r2, GLfloat g
   AddColour(r3, g3, b3);
 }
 
+glm::vec3 SphericalToCartesian(GLfloat altitude, GLfloat azimuth, GLfloat radius = 1.0)
+{
+  //return glm::vec3(radius*glm::sin(altitude)*glm::cos(azimuth), radius*glm::sin(altitude)*glm::sin(azimuth), radius*glm::cos(altitude));
+  return glm::vec3(radius*glm::sin(altitude)*glm::cos(azimuth), radius*glm::cos(altitude), radius*glm::sin(altitude)*glm::sin(azimuth));
+}
+
 bool InitializeSphere(MyGeometry *geometry)
 {
-  GLfloat step_size = (M_PI / 36.0);
+  GLfloat step_size = (M_PI / 24.0);
 
   for (GLfloat altitude = 0.0; altitude <= M_PI; altitude += (step_size))
   {
       for (GLfloat azimuth = 0.0; azimuth <= (2 * M_PI); azimuth += (step_size))
       {
-          GLfloat x1 = glm::sin(altitude)*glm::cos(azimuth);
-          GLfloat y1 = glm::sin(altitude)*glm::sin(azimuth);
-          GLfloat z1 = glm::cos(altitude);
+          glm::vec3 vertex_1 = SphericalToCartesian(altitude, azimuth);
+          glm::vec3 vertex_2 = SphericalToCartesian(altitude, azimuth + step_size);
+          glm::vec3 vertex_3 = SphericalToCartesian(altitude + step_size, azimuth + step_size);
 
-          GLfloat x2 = glm::sin(altitude)*glm::cos(azimuth + (step_size));
-          GLfloat y2 = glm::sin(altitude)*glm::sin(azimuth + (step_size));
-          GLfloat z2 = glm::cos(altitude);
-
-          GLfloat x3 = glm::sin(altitude + (step_size))*glm::cos(azimuth + (step_size));
-          GLfloat y3 = glm::sin(altitude + (step_size))*glm::sin(azimuth + (step_size));
-          GLfloat z3 = glm::cos(altitude + (step_size));
-
-          AddTriangle(x1, y1, z1, x2, y2, z2, x3, y3, z3);
+          AddTriangle(vertex_1.x, vertex_1.y, vertex_1.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_3.x, vertex_3.y, vertex_3.z);
           AddTriangleColour(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
 
-          x2 = glm::sin(altitude + (step_size))*glm::cos(azimuth);
-          y2 = glm::sin(altitude + (step_size))*glm::sin(azimuth);
-          z2 = glm::cos(altitude + (step_size));
+          vertex_2 = SphericalToCartesian(altitude + step_size, azimuth);
 
-          AddTriangle(x1, y1, z1, x2, y2, z2, x3, y3, z3);
+          AddTriangle(vertex_1.x, vertex_1.y, vertex_1.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_3.x, vertex_3.y, vertex_3.z);
           AddTriangleColour(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
 
       }
@@ -288,6 +291,7 @@ void RenderScene(MyGeometry *geometry, MyShader *shader)
                                            glm::vec3(1,0,0)), angle *2.f, glm::vec3(0,1,0)));
 
     glBindVertexArray(geometry->vertexArray);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
 
     vertices.clear();
@@ -318,6 +322,52 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         glfwSetWindowShouldClose(window, GL_TRUE);
 }
 
+void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (action == GLFW_PRESS)
+    {
+      mouse_button = button;
+      mouse_press = true;
+    }
+    else if (action == GLFW_RELEASE)
+    {
+      mouse_press = false;
+      mouse_button = GLFW_KEY_UNKNOWN;
+    }
+}
+
+void MouseMoveCallback(GLFWwindow* window, double x, double y)
+{
+  if (mouse_press)
+  {
+    if (mouse_button == GLFW_MOUSE_BUTTON_1)
+    {
+      GLfloat normalized_x = x / float(WINDOW_HEIGHT);
+      if (normalized_x <= 1.0 && normalized_x >= 0.01)
+      {
+        view_azimuth = normalized_x * (2 * M_PI);
+      }
+
+    }
+    if (mouse_button == GLFW_MOUSE_BUTTON_2)
+    {
+      GLfloat normalized_y = y / float(WINDOW_WIDTH);
+      if (normalized_y <= 1.0 && normalized_y >= 0.01)
+      {
+        view_altitude = normalized_y * (M_PI);
+      }
+    }
+  }
+}
+
+void MouseScrollwheelCallback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    if (yoffset == 1 && view_radius > 2.0)
+      view_radius -= 1.0;
+    else if (yoffset == -1 && view_radius <= 15.0)
+      view_radius += 1.0;
+}
+
 // ==========================================================================
 // PROGRAM ENTRY POINT
 
@@ -340,8 +390,7 @@ int main(int argc, char *argv[])
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #endif
-    int width = 512, height = 512;
-    window = glfwCreateWindow(width, height, "CPSC 453 OpenGL Boilerplate", 0, 0);
+    window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "CPSC 453 OpenGL Boilerplate", 0, 0);
     if (!window) {
         cout << "Program failed to create GLFW window, TERMINATING" << endl;
         glfwTerminate();
@@ -350,6 +399,9 @@ int main(int argc, char *argv[])
 
     // set keyboard callback function and make our context current (active)
     glfwSetKeyCallback(window, KeyCallback);
+    glfwSetMouseButtonCallback(window, MouseButtonCallback);
+    glfwSetScrollCallback(window, MouseScrollwheelCallback);
+    glfwSetCursorPosCallback(window, MouseMoveCallback);
     glfwMakeContextCurrent(window);
 
 
@@ -383,8 +435,8 @@ int main(int argc, char *argv[])
     
     glm::mat4 I(1.f);
     
-    setTransformationUniform(projUniform, glm::perspective(45.f, float(width)/float(height), 0.1f, 1000.f));
-    setTransformationUniform(viewUniform, glm::lookAt(glm::vec3(0,1,2), glm::vec3(0,0,-1), glm::vec3(0,1,0)));
+    setTransformationUniform(projUniform, glm::perspective(45.f, float(WINDOW_WIDTH)/float(WINDOW_HEIGHT), 0.1f, 1000.f));
+    setTransformationUniform(viewUniform, glm::lookAt(SphericalToCartesian(view_altitude, view_azimuth, view_radius), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
     setTransformationUniform(modelUniform, I);
 
     // call function to create and fill buffers with geometry data
@@ -397,7 +449,10 @@ int main(int argc, char *argv[])
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
     {
+        glUseProgram(shader.program);
         lastTime = glfwGetTime();
+
+        setTransformationUniform(viewUniform, glm::lookAt(SphericalToCartesian(view_altitude, view_azimuth, view_radius), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
 
         // call function to draw our scene
         RenderScene(&geometry, &shader);
