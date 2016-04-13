@@ -20,6 +20,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
+#include <glm/gtx/compatibility.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #if defined(_WIN32)
@@ -58,58 +59,21 @@ GLuint modelUniform;
 
 #define WINDOW_WIDTH 512
 #define WINDOW_HEIGHT 512
-#define MAX_CAMERA_RADIUS 50.0
-#define MIN_CAMERA_RADIUS 5.0
+#define MAX_CAMERA_RADIUS 100.0
+#define MIN_CAMERA_RADIUS 10.0
 #define SPHERE_ANGLE_SIZE (M_PI / 12.0);
 
 GLfloat angle = 0;
 GLfloat view_azimuth = 0.0;
 GLfloat view_altitude = M_PI / 3.0;
-GLfloat view_radius = 19.0;
+GLfloat view_radius = 50.0;
 GLfloat lastTime = 0;
 GLfloat rotation_speed = 0.80;
 vector<GLfloat> vertices;
 vector<GLfloat> colours;
+vector<GLfloat> uv_coords;
 int mouse_button = GLFW_KEY_UNKNOWN;
 bool mouse_press = false;
-
-class CelestialBody
-{
-  public:
-    CelestialBody(glm::vec3 origin_, GLfloat scale_, GLfloat revolution_rate_, GLfloat rotational_rate_, CelestialBody *satellite_ = NULL);
-    glm::mat4 GenerateTransformationMatrix(glm::mat4 previous_model);
-    CelestialBody* GetChildSatellite();
-  private:
-    GLfloat scale;
-    glm::vec3 origin; //relative to parent body
-    GLfloat revolution_rate; //relative to parent body
-    GLfloat rotational_rate; //relative to parent body
-    CelestialBody *satellite;
-};
-
-CelestialBody::CelestialBody(glm::vec3 origin_, GLfloat scale_, GLfloat revolution_rate_, GLfloat rotational_rate_, CelestialBody *satellite_)
-{
-  origin = origin_;
-  scale = scale_;
-  revolution_rate = revolution_rate_;
-  rotational_rate = rotational_rate_;
-  satellite = satellite_;
-}
-glm::mat4 CelestialBody::GenerateTransformationMatrix(glm::mat4 previous_model)
-{
-  glm::mat4 model;
-  //model = glm::scale(previous_model, glm::vec3(scale));
-  model = glm::rotate(previous_model, revolution_rate * angle, glm::vec3(0, 1, 0));
-  model = glm::scale(model, glm::vec3(scale));
-  model = glm::translate(model, origin);
-  model = glm::rotate(model, rotational_rate * angle, glm::vec3(0, 1, 0));
-  //model = glm::scale(model, glm::vec3(scale));
-  return model;
-}
-CelestialBody* CelestialBody::GetChildSatellite()
-{
-  return satellite;
-}
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL shader programs for rendering
@@ -166,21 +130,23 @@ struct MyGeometry
     // OpenGL names for array buffer objects, vertex array object
     GLuint  vertexBuffer;
     GLuint  colourBuffer;
+    GLuint  textureCoordBuffer;
     GLuint  vertexArray;
     GLsizei elementCount;
 
     // initialize object names to zero (OpenGL reserved value)
-    MyGeometry() : vertexBuffer(0), colourBuffer(0), vertexArray(0), elementCount(0)
+    MyGeometry() : vertexBuffer(0), colourBuffer(0), textureCoordBuffer(0), vertexArray(0), elementCount(0)
     {}
 };
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL buffers for storing geometry data
 
-bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vector<GLfloat> *colour_vec)
+bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vector<GLfloat> *colour_vec, vector<GLfloat> *texture_vec)
 {
   GLuint VERTEX_INDEX = 0;
   GLuint COLOUR_INDEX = 1;
+  GLuint TEXTURE_INDEX = 2;
 
   // create an array buffer object for storing our vertices
   glGenBuffers(1, &geometry->vertexBuffer);
@@ -191,6 +157,11 @@ bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vect
   glGenBuffers(1, &geometry->colourBuffer);
   glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
   glBufferData(GL_ARRAY_BUFFER, colour_vec->size()*sizeof(GLfloat), colour_vec->data(), GL_STATIC_DRAW);
+
+  // create another one for storing our colours
+  glGenBuffers(1, &geometry->textureCoordBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, geometry->textureCoordBuffer);
+  glBufferData(GL_ARRAY_BUFFER, texture_vec->size()*sizeof(GLfloat), texture_vec->data(), GL_STATIC_DRAW);
 
   // create a vertex array object encapsulating all our vertex attributes
   glGenVertexArrays(1, &geometry->vertexArray);
@@ -206,10 +177,70 @@ bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vect
   glVertexAttribPointer(COLOUR_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
   glEnableVertexAttribArray(COLOUR_INDEX);
 
+  // Set up vertex attribute info for textures
+  glBindBuffer(GL_ARRAY_BUFFER, geometry->textureCoordBuffer);
+  glVertexAttribPointer(TEXTURE_INDEX, 2, GL_FLOAT, GL_FALSE, 0, 0);
+  glEnableVertexAttribArray(TEXTURE_INDEX);
+
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 
+  vertex_vec->clear();
+  colour_vec->clear();
+  texture_vec->clear();
+
   return !CheckGLErrors();
+}
+
+// --------------------------------------------------------------------------
+// CelestialBody Class
+
+class CelestialBody
+{
+public:
+  CelestialBody(glm::vec3 origin_, GLfloat revolution_rate_, GLfloat rotational_rate_, MyGeometry *geometry_, MyTexture *texture_, CelestialBody *satellite_ = NULL);
+  glm::mat4 GenerateTransformationMatrix(glm::mat4 previous_model);
+  CelestialBody* GetChildSatellite();
+  MyGeometry* GetGeometry();
+  MyTexture* GetTexture();
+private:
+  glm::vec3 origin; //relative to parent body
+  GLfloat revolution_rate; //relative to parent body
+  GLfloat rotational_rate; //relative to parent body
+  CelestialBody *satellite;
+  MyGeometry *geometry;
+  MyTexture *texture;
+};
+
+CelestialBody::CelestialBody(glm::vec3 origin_, GLfloat revolution_rate_, GLfloat rotational_rate_, MyGeometry *geometry_, MyTexture *texture_, CelestialBody *satellite_)
+{
+  origin = origin_;
+  revolution_rate = revolution_rate_;
+  rotational_rate = rotational_rate_;
+  geometry = geometry_;
+  texture = texture_;
+  satellite = satellite_;
+}
+glm::mat4 CelestialBody::GenerateTransformationMatrix(glm::mat4 previous_model)
+{
+  glm::mat4 model;
+  model = glm::rotate(previous_model, rotational_rate * angle, glm::vec3(0, 1, 0));
+  model = glm::translate(model, origin);
+  model = glm::rotate(model, revolution_rate * angle, glm::vec3(0, 1, 0));
+;
+  return model;
+}
+MyGeometry* CelestialBody::GetGeometry()
+{
+  return geometry;
+}
+MyTexture* CelestialBody::GetTexture()
+{
+  return texture;
+}
+CelestialBody* CelestialBody::GetChildSatellite()
+{
+  return satellite;
 }
 
 // --------------------------------------------------------------------------
@@ -255,12 +286,23 @@ void AddTriangleColour(GLfloat r1, GLfloat g1, GLfloat b1, GLfloat r2, GLfloat g
   AddColour(r3, g3, b3);
 }
 
-glm::vec3 SphericalToCartesian(GLfloat altitude, GLfloat azimuth, GLfloat radius = 1.0)
+void AddUVCoordinate(glm::vec3 vector)
 {
-  return glm::vec3(radius*glm::sin(altitude)*glm::cos(azimuth), radius*glm::cos(altitude), radius*glm::sin(altitude)*glm::sin(azimuth));
+  glm::vec3 d = glm::normalize(vector);
+  GLfloat u = 0.5 + atan2(d.z, d.x)/(2*M_PI);
+  GLfloat v = 0.5 - asin(d.y)/(M_PI);
+  uv_coords.push_back(u);
+  uv_coords.push_back(v);
+
 }
 
-bool InitializeSphere(MyGeometry *geometry)
+glm::vec3 SphericalToCartesian(GLfloat altitude, GLfloat azimuth, GLfloat radius = 1.0)
+{
+  glm::vec3 return_vec =  glm::vec3(radius*glm::sin(altitude)*glm::cos(azimuth), radius*glm::cos(altitude), radius*glm::sin(altitude)*glm::sin(azimuth));
+  return return_vec;
+}
+
+bool InitializeSphere(MyGeometry *geometry, GLfloat radius)
 {
   GLfloat step_size = SPHERE_ANGLE_SIZE;
 
@@ -268,14 +310,22 @@ bool InitializeSphere(MyGeometry *geometry)
   {
       for (GLfloat azimuth = 0.0; azimuth <= (2 * M_PI); azimuth += (step_size))
       {
-          glm::vec3 vertex_1 = SphericalToCartesian(altitude, azimuth);
-          glm::vec3 vertex_2 = SphericalToCartesian(altitude, azimuth + step_size);
-          glm::vec3 vertex_3 = SphericalToCartesian(altitude + step_size, azimuth + step_size);
+          glm::vec3 vertex_1 = SphericalToCartesian(altitude, azimuth, radius);
+          glm::vec3 vertex_2 = SphericalToCartesian(altitude, azimuth + step_size, radius);
+          glm::vec3 vertex_3 = SphericalToCartesian(altitude + step_size, azimuth + step_size, radius);
+
+          AddUVCoordinate(vertex_1);
+          AddUVCoordinate(vertex_2);
+          AddUVCoordinate(vertex_3);
 
           AddTriangle(vertex_1.x, vertex_1.y, vertex_1.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_3.x, vertex_3.y, vertex_3.z);
           AddTriangleColour(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
 
-          vertex_2 = SphericalToCartesian(altitude + step_size, azimuth);
+          vertex_2 = SphericalToCartesian(altitude + step_size, azimuth, radius);
+
+          AddUVCoordinate(vertex_1);
+          AddUVCoordinate(vertex_2);
+          AddUVCoordinate(vertex_3);
 
           AddTriangle(vertex_1.x, vertex_1.y, vertex_1.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_3.x, vertex_3.y, vertex_3.z);
           AddTriangleColour(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
@@ -285,7 +335,7 @@ bool InitializeSphere(MyGeometry *geometry)
 
   geometry->elementCount = vertices.size() / 3;
 
-  return BindGeometryBuffers(geometry, &vertices, &colours);
+  return BindGeometryBuffers(geometry, &vertices, &colours, &uv_coords);
 }
 
 void GetRotationRate()
@@ -315,7 +365,7 @@ void setTransformationUniform(GLuint uniform, glm::mat4 mat)
 // --------------------------------------------------------------------------
 // Rendering function that draws our scene to the frame buffer
 
-void RenderScene(MyGeometry *geometry, MyShader *shader, CelestialBody *body_graph)
+void RenderScene(MyShader *shader, CelestialBody *body_graph)
 {
     // clear screen to a dark grey colour
     glClearColor(0.2, 0.2, 0.2, 1.0);
@@ -325,27 +375,25 @@ void RenderScene(MyGeometry *geometry, MyShader *shader, CelestialBody *body_gra
     // scene geometry, then tell OpenGL to draw our geometry
     glUseProgram(shader->program);
 
-    // Update model uniform and update angle  ======================
-    //glm::mat4 m1 = glm::mat4(glm::rotate(glm::translate(glm::rotate(angle, glm::vec3(0, 1, 0)), glm::vec3(1, 0, 0)), angle *2.f, glm::vec3(0, 1, 0)));
-   // setTransformationUniform(modelUniform, m1);
-
-    glBindVertexArray(geometry->vertexArray);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     CelestialBody *body = body_graph;
     glm::mat4 last_model(1.f);
+    glEnable(GL_TEXTURE_2D);
     while (body != NULL)
     {
+      glBindVertexArray(body->GetGeometry()->vertexArray);
+      glBindTexture(GL_TEXTURE_2D, body->GetTexture()->textureName);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
       glm::mat4 model = body->GenerateTransformationMatrix(last_model);
       setTransformationUniform(modelUniform, model);
       last_model = model;
-      glDrawArrays(GL_TRIANGLES, 0, geometry->elementCount);
+      glDrawArrays(GL_TRIANGLES, 0, body->GetGeometry()->elementCount);
       body = body->GetChildSatellite();
     }
 
-    vertices.clear();
-    colours.clear();
-
     // reset state to default (no shader or geometry bound)
+    glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
     glUseProgram(0);
 
@@ -368,6 +416,19 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
+
+    if (action == GLFW_PRESS)
+    {
+      switch (key)
+      {
+      case GLFW_KEY_UP:
+        rotation_speed += 0.05;
+        break;
+      case GLFW_KEY_DOWN:
+        rotation_speed -= 0.05;
+        break;
+      }
+    }
 }
 
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
@@ -487,16 +548,29 @@ int main(int argc, char *argv[])
     setTransformationUniform(viewUniform, glm::lookAt(SphericalToCartesian(view_altitude, view_azimuth, view_radius), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
     setTransformationUniform(modelUniform, I);
 
-    // call function to create and fill buffers with geometry data
-    MyGeometry sphere;
-    /*if (!InitializeGeometry(&geometry))
-        cout << "Program failed to intialize geometry!" << endl;*/
-    if (!InitializeSphere(&sphere))
-      cout << "Program failed to intialize geometry!" << endl;
+    MyTexture sun_texture, earth_texture, moon_texture;
 
-    CelestialBody moon = CelestialBody(glm::vec3(log10(3.703E05), 0.0, 0.0), 0.27, 1.0, 2.f);
-    CelestialBody earth = CelestialBody(glm::vec3(log10(1.496E08), 0.0, 0.0), 1.0, 1.0, 2.f, &moon);
-    CelestialBody sun = CelestialBody(glm::vec3(0.0), log(109), 0.0, 0.0, &earth);
+    if (!InitializeTexture(&sun_texture, "sun.jpg"))
+      cout << "Failed to load sun_texture!" << endl;
+
+    if (!InitializeTexture(&earth_texture, "earth.jpg"))
+      cout << "Failed to load earth_texture!" << endl;
+
+    if (!InitializeTexture(&moon_texture, "moon.jpg"))
+      cout << "Failed to load moon_texture!" << endl;
+
+    // call function to create and fill buffers with geometry data
+    MyGeometry sun_geometry, earth_geometry, moon_geometry;
+    if (!InitializeSphere(&sun_geometry, log(109)))
+      cout << "Program failed to intialize sun_geometry!" << endl;
+    if (!InitializeSphere(&earth_geometry, 1.0))
+      cout << "Program failed to intialize earth_geometry!" << endl;
+    if (!InitializeSphere(&moon_geometry, 0.27))
+      cout << "Program failed to intialize moon_geometry!" << endl;
+
+    CelestialBody moon = CelestialBody(glm::vec3(2.57, 0.0, 0.0), (0.073), (27), &moon_geometry, &moon_texture);
+    CelestialBody earth = CelestialBody(glm::vec3(15, 0.0, 0.0), (1.0), 100*(0.0027), &earth_geometry, &earth_texture, &moon);
+    CelestialBody sun = CelestialBody(glm::vec3(0.0), 0.0, 0.0, &sun_geometry, &sun_texture, &earth);
 
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
@@ -507,7 +581,7 @@ int main(int argc, char *argv[])
         setTransformationUniform(viewUniform, glm::lookAt(SphericalToCartesian(view_altitude, view_azimuth, view_radius), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
 
         // call function to draw our scene
-        RenderScene(&sphere, &shader, &sun);
+        RenderScene(&shader, &sun);
 
         // scene is rendered to the back buffer, so swap to front for display
         glfwSwapBuffers(window);
@@ -519,7 +593,9 @@ int main(int argc, char *argv[])
     }
 
     // clean up allocated resources before exit
-    DestroyGeometry(&sphere);
+    DestroyGeometry(&sun_geometry);
+    DestroyGeometry(&earth_geometry);
+    DestroyGeometry(&moon_geometry);
     DestroyShaders(&shader);
     glfwDestroyWindow(window);
     glfwTerminate();

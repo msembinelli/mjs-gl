@@ -10,9 +10,11 @@
 // InitializeGeometry() function of the main program
 layout(location = 0) in vec3 VertexPosition;
 layout(location = 1) in vec3 VertexColour;
+layout(location = 2) in vec2 TextureCoordinates;
 
 // output to be interpolated between vertices and passed to the fragment stage
-out vec3 Colour;
+//out vec3 Colour;
+out vec2 TextureCoords;
 
 //uniforms
 // add transformation uniforms
@@ -26,5 +28,6 @@ void main()
     gl_Position = proj*view*model*vec4(VertexPosition, 1.0);
 
     // assign output colour to be interpolated
-    Colour = VertexColour;
+    //Colour = VertexColour;
+	TextureCoords = TextureCoordinates;
 }

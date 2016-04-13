@@ -46,7 +46,7 @@ bool InitializeTexture(MyTexture *texture, const string &imageFileName)
 
     // try to read the provided image file
     try {
-        myImage.read(imageFileName);
+        myImage.read(imageFileName.c_str());
     }
     catch (Magick::Error &error) {
         cout << "Magick++ failed to read image " << imageFileName << endl;
