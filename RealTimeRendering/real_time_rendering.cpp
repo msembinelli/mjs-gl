@@ -61,7 +61,7 @@ GLuint modelUniform;
 #define WINDOW_HEIGHT 512
 #define MAX_CAMERA_RADIUS 100.0
 #define MIN_CAMERA_RADIUS 10.0
-#define SPHERE_ANGLE_SIZE (M_PI / 12.0);
+#define SPHERE_ANGLE_SIZE (M_PI / 12.0)
 
 GLfloat angle = 0;
 GLfloat view_azimuth = 0.0;
@@ -289,8 +289,8 @@ void AddTriangleColour(GLfloat r1, GLfloat g1, GLfloat b1, GLfloat r2, GLfloat g
 void AddUVCoordinate(glm::vec3 vector)
 {
   glm::vec3 d = glm::normalize(vector);
-  GLfloat u = 0.5 + atan2(d.z, d.x)/(2*M_PI);
-  GLfloat v = 0.5 - asin(d.y)/(M_PI);
+  GLfloat u = 0.5 * (atan2(d.z, d.x) / (M_PI)+1.0);
+  GLfloat v = 0.5 + asin(d.y)/(M_PI);
   uv_coords.push_back(u);
   uv_coords.push_back(v);
 
@@ -306,31 +306,47 @@ bool InitializeSphere(MyGeometry *geometry, GLfloat radius)
 {
   GLfloat step_size = SPHERE_ANGLE_SIZE;
 
-  for (GLfloat altitude = 0.0; altitude <= M_PI; altitude += (step_size))
+  for (GLfloat altitude = 0.0; altitude <= (M_PI - SPHERE_ANGLE_SIZE); altitude += (step_size))
   {
-      for (GLfloat azimuth = 0.0; azimuth <= (2 * M_PI); azimuth += (step_size))
+    for (GLfloat azimuth = 0.0; azimuth <= (2 * M_PI); azimuth += (step_size))
+    {
+      glm::vec3 vertex_1, vertex_2, vertex_3;
+      if (altitude == 0.0)
       {
-          glm::vec3 vertex_1 = SphericalToCartesian(altitude, azimuth, radius);
-          glm::vec3 vertex_2 = SphericalToCartesian(altitude, azimuth + step_size, radius);
-          glm::vec3 vertex_3 = SphericalToCartesian(altitude + step_size, azimuth + step_size, radius);
-
-          AddUVCoordinate(vertex_1);
-          AddUVCoordinate(vertex_2);
-          AddUVCoordinate(vertex_3);
-
-          AddTriangle(vertex_1.x, vertex_1.y, vertex_1.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_3.x, vertex_3.y, vertex_3.z);
-          AddTriangleColour(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
-
-          vertex_2 = SphericalToCartesian(altitude + step_size, azimuth, radius);
-
-          AddUVCoordinate(vertex_1);
-          AddUVCoordinate(vertex_2);
-          AddUVCoordinate(vertex_3);
-
-          AddTriangle(vertex_1.x, vertex_1.y, vertex_1.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_3.x, vertex_3.y, vertex_3.z);
-          AddTriangleColour(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
-
+        vertex_1 = SphericalToCartesian(altitude, azimuth, radius);
+        vertex_2 = SphericalToCartesian(altitude + step_size, azimuth, radius);
+        vertex_3 = SphericalToCartesian(altitude + step_size, azimuth + step_size, radius);
+        AddUVCoordinate(vertex_3);
+        AddUVCoordinate(vertex_2);
+        AddUVCoordinate(vertex_1);
+        AddTriangle(vertex_3.x, vertex_3.y, vertex_3.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_1.x, vertex_1.y, vertex_1.z);
       }
+      else if (altitude == (M_PI - SPHERE_ANGLE_SIZE))
+      {
+        vertex_1 = SphericalToCartesian(altitude, azimuth, radius);
+        vertex_2 = SphericalToCartesian(altitude, azimuth + step_size, radius);
+        vertex_3 = SphericalToCartesian(altitude + step_size, azimuth, radius);
+        AddUVCoordinate(vertex_1);
+        AddUVCoordinate(vertex_2);
+        AddUVCoordinate(vertex_3);
+        AddTriangle(vertex_1.x, vertex_1.y, vertex_1.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_3.x, vertex_3.y, vertex_3.z);
+      }
+      else
+      {
+        vertex_1 = SphericalToCartesian(altitude, azimuth, radius);
+        vertex_2 = SphericalToCartesian(altitude, azimuth + step_size, radius);
+        vertex_3 = SphericalToCartesian(altitude + step_size, azimuth + step_size, radius);
+        AddUVCoordinate(vertex_1);
+        AddUVCoordinate(vertex_2);
+        AddUVCoordinate(vertex_3);
+        AddTriangle(vertex_1.x, vertex_1.y, vertex_1.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_3.x, vertex_3.y, vertex_3.z);
+        vertex_2 = SphericalToCartesian(altitude + step_size, azimuth, radius);
+        AddUVCoordinate(vertex_3);
+        AddUVCoordinate(vertex_2);
+        AddUVCoordinate(vertex_1);
+        AddTriangle(vertex_3.x, vertex_3.y, vertex_3.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_1.x, vertex_1.y, vertex_1.z);
+      }
+    }
   }
 
   geometry->elementCount = vertices.size() / 3;
@@ -369,7 +385,7 @@ void RenderScene(MyShader *shader, CelestialBody *body_graph)
 {
     // clear screen to a dark grey colour
     glClearColor(0.2, 0.2, 0.2, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // bind our shader program and the vertex array object containing our
     // scene geometry, then tell OpenGL to draw our geometry
@@ -378,13 +394,17 @@ void RenderScene(MyShader *shader, CelestialBody *body_graph)
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     CelestialBody *body = body_graph;
     glm::mat4 last_model(1.f);
-    glEnable(GL_TEXTURE_2D);
+
     while (body != NULL)
     {
       glBindVertexArray(body->GetGeometry()->vertexArray);
       glBindTexture(GL_TEXTURE_2D, body->GetTexture()->textureName);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glEnable(GL_CULL_FACE);
+      glFrontFace(GL_CCW);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
       glm::mat4 model = body->GenerateTransformationMatrix(last_model);
       setTransformationUniform(modelUniform, model);
       last_model = model;
@@ -544,7 +564,7 @@ int main(int argc, char *argv[])
     
     glm::mat4 I(1.f);
     
-    setTransformationUniform(projUniform, glm::perspective(45.f, float(WINDOW_WIDTH)/float(WINDOW_HEIGHT), 0.1f, 1000.f));
+    setTransformationUniform(projUniform, glm::perspective(45.f, float(WINDOW_WIDTH)/float(WINDOW_HEIGHT), 0.01f, 1000.f));
     setTransformationUniform(viewUniform, glm::lookAt(SphericalToCartesian(view_altitude, view_azimuth, view_radius), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
     setTransformationUniform(modelUniform, I);
 
