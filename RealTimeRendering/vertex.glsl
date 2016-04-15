@@ -9,12 +9,12 @@
 // location indices for these attributes correspond to those specified in the
 // InitializeGeometry() function of the main program
 layout(location = 0) in vec3 VertexPosition;
-layout(location = 1) in vec3 VertexColour;
-layout(location = 2) in vec2 TextureCoordinates;
+layout(location = 1) in vec3 VertexNormal;
+layout(location = 2) in vec2 VertexTextureCoordinates;
 
-// output to be interpolated between vertices and passed to the fragment stage
-//out vec3 Colour;
-out vec2 TextureCoords;
+out vec3 FragmentPosition;
+out vec3 FragmentNormal;
+out vec2 FragmentTextureCoordinates;
 
 //uniforms
 // add transformation uniforms
@@ -27,7 +27,7 @@ void main()
     // assign vertex position without modification
     gl_Position = proj*view*model*vec4(VertexPosition, 1.0);
 
-    // assign output colour to be interpolated
-    //Colour = VertexColour;
-	TextureCoords = TextureCoordinates;
+	FragmentTextureCoordinates = VertexTextureCoordinates;
+	FragmentNormal = VertexNormal;
+	FragmentPosition = VertexPosition;
 }

@@ -61,19 +61,25 @@ GLuint modelUniform;
 #define WINDOW_HEIGHT 512
 #define MAX_CAMERA_RADIUS 100.0
 #define MIN_CAMERA_RADIUS 10.0
-#define SPHERE_ANGLE_SIZE (M_PI / 12.0)
+#define SPHERE_ANGLE_SIZE (M_PI / 300.0)
+
+struct Light {
+  glm::vec3 position;
+  glm::vec3 intensities;
+};
 
 GLfloat angle = 0;
 GLfloat view_azimuth = 0.0;
 GLfloat view_altitude = M_PI / 3.0;
-GLfloat view_radius = 50.0;
+GLfloat view_radius = 35.0;
 GLfloat lastTime = 0;
 GLfloat rotation_speed = 0.80;
 vector<GLfloat> vertices;
-vector<GLfloat> colours;
+vector<GLfloat> normals;
 vector<GLfloat> uv_coords;
 int mouse_button = GLFW_KEY_UNKNOWN;
 bool mouse_press = false;
+Light light;
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL shader programs for rendering
@@ -129,23 +135,23 @@ struct MyGeometry
 {
     // OpenGL names for array buffer objects, vertex array object
     GLuint  vertexBuffer;
-    GLuint  colourBuffer;
+    GLuint  normalBuffer;
     GLuint  textureCoordBuffer;
     GLuint  vertexArray;
     GLsizei elementCount;
 
     // initialize object names to zero (OpenGL reserved value)
-    MyGeometry() : vertexBuffer(0), colourBuffer(0), textureCoordBuffer(0), vertexArray(0), elementCount(0)
+    MyGeometry() : vertexBuffer(0), normalBuffer(0), textureCoordBuffer(0), vertexArray(0), elementCount(0)
     {}
 };
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL buffers for storing geometry data
 
-bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vector<GLfloat> *colour_vec, vector<GLfloat> *texture_vec)
+bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vector<GLfloat> *normal_vec, vector<GLfloat> *texture_vec)
 {
   GLuint VERTEX_INDEX = 0;
-  GLuint COLOUR_INDEX = 1;
+  GLuint NORMAL_INDEX = 1;
   GLuint TEXTURE_INDEX = 2;
 
   // create an array buffer object for storing our vertices
@@ -154,9 +160,9 @@ bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vect
   glBufferData(GL_ARRAY_BUFFER, vertex_vec->size()*sizeof(GLfloat), vertex_vec->data(), GL_STATIC_DRAW);
 
   // create another one for storing our colours
-  glGenBuffers(1, &geometry->colourBuffer);
-  glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
-  glBufferData(GL_ARRAY_BUFFER, colour_vec->size()*sizeof(GLfloat), colour_vec->data(), GL_STATIC_DRAW);
+  glGenBuffers(1, &geometry->normalBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, geometry->normalBuffer);
+  glBufferData(GL_ARRAY_BUFFER, normal_vec->size()*sizeof(GLfloat), normal_vec->data(), GL_STATIC_DRAW);
 
   // create another one for storing our colours
   glGenBuffers(1, &geometry->textureCoordBuffer);
@@ -173,9 +179,9 @@ bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vect
   glEnableVertexAttribArray(VERTEX_INDEX);
 
   // associate the colour array with the vertex array object
-  glBindBuffer(GL_ARRAY_BUFFER, geometry->colourBuffer);
-  glVertexAttribPointer(COLOUR_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
-  glEnableVertexAttribArray(COLOUR_INDEX);
+  glBindBuffer(GL_ARRAY_BUFFER, geometry->normalBuffer);
+  glVertexAttribPointer(NORMAL_INDEX, 3, GL_FLOAT, GL_FALSE, 0, 0);
+  glEnableVertexAttribArray(NORMAL_INDEX);
 
   // Set up vertex attribute info for textures
   glBindBuffer(GL_ARRAY_BUFFER, geometry->textureCoordBuffer);
@@ -186,7 +192,7 @@ bool BindGeometryBuffers(MyGeometry *geometry, vector<GLfloat> *vertex_vec, vect
   glBindVertexArray(0);
 
   vertex_vec->clear();
-  colour_vec->clear();
+  normal_vec->clear();
   texture_vec->clear();
 
   return !CheckGLErrors();
@@ -246,54 +252,39 @@ CelestialBody* CelestialBody::GetChildSatellite()
 // --------------------------------------------------------------------------
 // Functions to push primitives vertex and colour data onto vector
 
-void AddVertex(GLfloat x, GLfloat y, GLfloat z)
+void AddVertex(glm::vec3 vertex)
 {
-  vertices.push_back(x);
-  vertices.push_back(y);
-  vertices.push_back(z);
+  vertices.push_back(vertex.x);
+  vertices.push_back(vertex.y);
+  vertices.push_back(vertex.z);
 }
 
-void AddColour(GLfloat r, GLfloat g, GLfloat b)
+void AddSurfaceNormal(glm::vec3 v1, glm::vec3 v2)
 {
-  colours.push_back(r);
-  colours.push_back(g);
-  colours.push_back(b);
+  glm::vec3 d = glm::normalize(glm::abs(glm::cross(v1, v2)));
+  normals.push_back(d.x);
+  normals.push_back(d.y);
+  normals.push_back(d.z);
 }
 
-void AddLine(GLfloat x1, GLfloat y1, GLfloat z1, GLfloat x2, GLfloat y2, GLfloat z2)
+void AddTriangle(glm::vec3 vertex_1, glm::vec3 vertex_2, glm::vec3 vertex_3)
 {
-  AddVertex(x1, y1, z1);
-  AddVertex(x2, y2, z2);
+  AddVertex(vertex_1);
+  AddVertex(vertex_2);
+  AddVertex(vertex_3);
 }
-
-void AddLineColour(GLfloat r1, GLfloat g1, GLfloat b1, GLfloat r2, GLfloat g2, GLfloat b2)
-{
-  AddColour(r1, g1, b1);
-  AddColour(r2, g2, b2);
-}
-
-void AddTriangle(GLfloat x1, GLfloat y1, GLfloat z1, GLfloat x2, GLfloat y2, GLfloat z2, GLfloat x3, GLfloat y3, GLfloat z3)
-{
-  AddVertex(x1, y1, z1);
-  AddVertex(x2, y2, z2);
-  AddVertex(x3, y3, z3);
-}
-
-void AddTriangleColour(GLfloat r1, GLfloat g1, GLfloat b1, GLfloat r2, GLfloat g2, GLfloat b2, GLfloat r3, GLfloat g3, GLfloat b3)
-{
-  AddColour(r1, g1, b1);
-  AddColour(r2, g2, b2);
-  AddColour(r3, g3, b3);
-}
-
-void AddUVCoordinate(glm::vec3 vector)
+glm::vec2 MakeUVCoordinate(glm::vec3 vector)
 {
   glm::vec3 d = glm::normalize(vector);
   GLfloat u = 0.5 * (atan2(d.z, d.x) / (M_PI)+1.0);
   GLfloat v = 0.5 + asin(d.y)/(M_PI);
-  uv_coords.push_back(u);
-  uv_coords.push_back(v);
+  return glm::vec2(u, v);
+}
 
+void AddUVCoordinate(glm::vec2 uv)
+{
+  uv_coords.push_back(uv.s);
+  uv_coords.push_back(uv.t);
 }
 
 glm::vec3 SphericalToCartesian(GLfloat altitude, GLfloat azimuth, GLfloat radius = 1.0)
@@ -305,53 +296,130 @@ glm::vec3 SphericalToCartesian(GLfloat altitude, GLfloat azimuth, GLfloat radius
 bool InitializeSphere(MyGeometry *geometry, GLfloat radius)
 {
   GLfloat step_size = SPHERE_ANGLE_SIZE;
+  GLfloat threshold = 0.7;
 
-  for (GLfloat altitude = 0.0; altitude <= (M_PI - SPHERE_ANGLE_SIZE); altitude += (step_size))
+  for (GLfloat altitude = 0.0; altitude < (M_PI); altitude += (step_size))
   {
     for (GLfloat azimuth = 0.0; azimuth <= (2 * M_PI); azimuth += (step_size))
     {
       glm::vec3 vertex_1, vertex_2, vertex_3;
+      glm::vec2 uv_1, uv_2, uv_3;
       if (altitude == 0.0)
       {
         vertex_1 = SphericalToCartesian(altitude, azimuth, radius);
         vertex_2 = SphericalToCartesian(altitude + step_size, azimuth, radius);
         vertex_3 = SphericalToCartesian(altitude + step_size, azimuth + step_size, radius);
-        AddUVCoordinate(vertex_3);
-        AddUVCoordinate(vertex_2);
-        AddUVCoordinate(vertex_1);
-        AddTriangle(vertex_3.x, vertex_3.y, vertex_3.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_1.x, vertex_1.y, vertex_1.z);
+        uv_1 = MakeUVCoordinate(vertex_3);
+        uv_2 = MakeUVCoordinate(vertex_2);
+        uv_3 = MakeUVCoordinate(vertex_1);
+        if (uv_1.s > threshold || uv_2.s > threshold || uv_3.s > threshold)
+        {
+          if (uv_1.s < 1.f - threshold)
+          {
+            uv_1.s += 1.f;
+          }
+          if (uv_2.s < 1.f - threshold)
+          {
+            uv_2.s += 1.f;
+          }
+          if (uv_3.s < 1.f - threshold)
+          {
+            uv_3.s += 1.f;
+          }
+        }
+        AddTriangle(vertex_3, vertex_2, vertex_1);
+        AddUVCoordinate(uv_1);
+        AddUVCoordinate(uv_2);
+        AddUVCoordinate(uv_3);
+        AddSurfaceNormal(vertex_3 - vertex_1, vertex_3 - vertex_2);
       }
       else if (altitude == (M_PI - SPHERE_ANGLE_SIZE))
       {
         vertex_1 = SphericalToCartesian(altitude, azimuth, radius);
         vertex_2 = SphericalToCartesian(altitude, azimuth + step_size, radius);
         vertex_3 = SphericalToCartesian(altitude + step_size, azimuth, radius);
-        AddUVCoordinate(vertex_1);
-        AddUVCoordinate(vertex_2);
-        AddUVCoordinate(vertex_3);
-        AddTriangle(vertex_1.x, vertex_1.y, vertex_1.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_3.x, vertex_3.y, vertex_3.z);
+        uv_1 = MakeUVCoordinate(vertex_1);
+        uv_2 = MakeUVCoordinate(vertex_2);
+        uv_3 = MakeUVCoordinate(vertex_3);
+        if (uv_1.s > threshold || uv_2.s > threshold || uv_3.s > threshold)
+        {
+          if (uv_1.s < 1.f - threshold)
+          {
+            uv_1.s += 1.f;
+          }
+          if (uv_2.s < 1.f - threshold)
+          {
+            uv_2.s += 1.f;
+          }
+          if (uv_3.s < 1.f - threshold)
+          {
+            uv_3.s += 1.f;
+          }
+        }
+        AddTriangle(vertex_1, vertex_2, vertex_3);
+        AddUVCoordinate(uv_1);
+        AddUVCoordinate(uv_2);
+        AddUVCoordinate(uv_3);
+        AddSurfaceNormal(vertex_3 - vertex_1, vertex_3 - vertex_2);
       }
       else
       {
         vertex_1 = SphericalToCartesian(altitude, azimuth, radius);
         vertex_2 = SphericalToCartesian(altitude, azimuth + step_size, radius);
         vertex_3 = SphericalToCartesian(altitude + step_size, azimuth + step_size, radius);
-        AddUVCoordinate(vertex_1);
-        AddUVCoordinate(vertex_2);
-        AddUVCoordinate(vertex_3);
-        AddTriangle(vertex_1.x, vertex_1.y, vertex_1.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_3.x, vertex_3.y, vertex_3.z);
+        uv_1 = MakeUVCoordinate(vertex_1);
+        uv_2 = MakeUVCoordinate(vertex_2);
+        uv_3 = MakeUVCoordinate(vertex_3);
+        if (uv_1.s > threshold || uv_2.s > threshold || uv_3.s > threshold)
+        {
+          if (uv_1.s < 1.f - threshold)
+          {
+            uv_1.s += 1.f;
+          }
+          if (uv_2.s < 1.f - threshold)
+          {
+            uv_2.s += 1.f;
+          }
+          if (uv_3.s < 1.f - threshold)
+          {
+            uv_3.s += 1.f;
+          }
+        }
+        AddTriangle(vertex_1, vertex_2, vertex_3);
+        AddUVCoordinate(uv_1);
+        AddUVCoordinate(uv_2);
+        AddUVCoordinate(uv_3);
+        AddSurfaceNormal(vertex_3 - vertex_1, vertex_3 - vertex_2);
         vertex_2 = SphericalToCartesian(altitude + step_size, azimuth, radius);
-        AddUVCoordinate(vertex_3);
-        AddUVCoordinate(vertex_2);
-        AddUVCoordinate(vertex_1);
-        AddTriangle(vertex_3.x, vertex_3.y, vertex_3.z, vertex_2.x, vertex_2.y, vertex_2.z, vertex_1.x, vertex_1.y, vertex_1.z);
+        uv_1 = MakeUVCoordinate(vertex_3);
+        uv_2 = MakeUVCoordinate(vertex_2);
+        uv_3 = MakeUVCoordinate(vertex_1);
+        if (uv_1.s > threshold || uv_2.s > threshold || uv_3.s > threshold)
+        {
+          if (uv_1.s < 1.f - threshold)
+          {
+            uv_1.s += 1.f;
+          }
+          if (uv_2.s < 1.f - threshold)
+          {
+            uv_2.s += 1.f;
+          }
+          if (uv_3.s < 1.f - threshold)
+          {
+            uv_3.s += 1.f;
+          }
+        }
+        AddTriangle(vertex_3, vertex_2, vertex_1);
+        AddUVCoordinate(uv_1);
+        AddUVCoordinate(uv_2);
+        AddUVCoordinate(uv_3);
+        AddSurfaceNormal(vertex_3 - vertex_1, vertex_3 - vertex_2);
       }
     }
   }
-
   geometry->elementCount = vertices.size() / 3;
 
-  return BindGeometryBuffers(geometry, &vertices, &colours, &uv_coords);
+  return BindGeometryBuffers(geometry, &vertices, &normals, &uv_coords);
 }
 
 void GetRotationRate()
@@ -370,7 +438,7 @@ void DestroyGeometry(MyGeometry *geometry)
     glBindVertexArray(0);
     glDeleteVertexArrays(1, &geometry->vertexArray);
     glDeleteBuffers(1, &geometry->vertexBuffer);
-    glDeleteBuffers(1, &geometry->colourBuffer);
+    glDeleteBuffers(1, &geometry->normalBuffer);
 }
 
 void setTransformationUniform(GLuint uniform, glm::mat4 mat)
@@ -384,7 +452,8 @@ void setTransformationUniform(GLuint uniform, glm::mat4 mat)
 void RenderScene(MyShader *shader, CelestialBody *body_graph)
 {
     // clear screen to a dark grey colour
-    glClearColor(0.2, 0.2, 0.2, 1.0);
+    glClearColor(0.0, 0.0, 0.0, 1.0);
+    glEnable(GL_DEPTH_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // bind our shader program and the vertex array object containing our
@@ -406,7 +475,15 @@ void RenderScene(MyShader *shader, CelestialBody *body_graph)
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
       glm::mat4 model = body->GenerateTransformationMatrix(last_model);
+      
       setTransformationUniform(modelUniform, model);
+      glUniform3f(glGetUniformLocation(shader->program, "light.position"), light.position.x, light.position.y, light.position.z);
+      glUniform3f(glGetUniformLocation(shader->program, "light.intensities"), light.intensities.x, light.intensities.y, light.intensities.z);
+      glUniform1f(glGetUniformLocation(shader->program, "light.ambient"), 0.10);
+      glUniform1f(glGetUniformLocation(shader->program, "material_shininess"), 8);
+      glUniform3f(glGetUniformLocation(shader->program, "material_colour"), 0.8, 0.8, 0.8);
+      glUniform3f(glGetUniformLocation(shader->program, "camera_position"), SphericalToCartesian(view_altitude, view_azimuth, view_radius).x, SphericalToCartesian(view_altitude, view_azimuth, view_radius).y, SphericalToCartesian(view_altitude, view_azimuth, view_radius).z);
+
       last_model = model;
       glDrawArrays(GL_TRIANGLES, 0, body->GetGeometry()->elementCount);
       body = body->GetChildSatellite();
@@ -519,6 +596,7 @@ int main(int argc, char *argv[])
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #endif
+    glfwWindowHint(GLFW_SAMPLES, 4);
     window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "CPSC 453 OpenGL Boilerplate", 0, 0);
     if (!window) {
         cout << "Program failed to create GLFW window, TERMINATING" << endl;
@@ -581,16 +659,19 @@ int main(int argc, char *argv[])
 
     // call function to create and fill buffers with geometry data
     MyGeometry sun_geometry, earth_geometry, moon_geometry;
-    if (!InitializeSphere(&sun_geometry, log(109)))
+    if (!InitializeSphere(&sun_geometry, log10(109)*2))
       cout << "Program failed to intialize sun_geometry!" << endl;
-    if (!InitializeSphere(&earth_geometry, 1.0))
+    if (!InitializeSphere(&earth_geometry, log10(27.0)))
       cout << "Program failed to intialize earth_geometry!" << endl;
-    if (!InitializeSphere(&moon_geometry, 0.27))
+    if (!InitializeSphere(&moon_geometry, 1.0))
       cout << "Program failed to intialize moon_geometry!" << endl;
 
-    CelestialBody moon = CelestialBody(glm::vec3(2.57, 0.0, 0.0), (0.073), (27), &moon_geometry, &moon_texture);
+    CelestialBody moon = CelestialBody(glm::vec3(4.57, 0.0, 0.0), (0.073), (5), &moon_geometry, &moon_texture);
     CelestialBody earth = CelestialBody(glm::vec3(15, 0.0, 0.0), (1.0), 100*(0.0027), &earth_geometry, &earth_texture, &moon);
     CelestialBody sun = CelestialBody(glm::vec3(0.0), 0.0, 0.0, &sun_geometry, &sun_texture, &earth);
+
+    light.intensities = glm::vec3(1.0);
+    light.position = glm::vec3(0.0, 0.0, 0.0);
 
     // run an event-triggered main loop
     while (!glfwWindowShouldClose(window))
