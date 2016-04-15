@@ -519,10 +519,10 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
       switch (key)
       {
       case GLFW_KEY_UP:
-        rotation_speed += 0.05;
+        rotation_speed += 0.20;
         break;
       case GLFW_KEY_DOWN:
-        rotation_speed -= 0.05;
+        rotation_speed -= 0.20;
         break;
       }
     }
@@ -667,7 +667,7 @@ int main(int argc, char *argv[])
       cout << "Program failed to intialize moon_geometry!" << endl;
 
     CelestialBody moon = CelestialBody(glm::vec3(4.57, 0.0, 0.0), (0.073), (5), &moon_geometry, &moon_texture);
-    CelestialBody earth = CelestialBody(glm::vec3(15, 0.0, 0.0), (1.0), 100*(0.0027), &earth_geometry, &earth_texture, &moon);
+    CelestialBody earth = CelestialBody(glm::vec3(15, 0.0, 0.0), (0.5), 100*(0.0027), &earth_geometry, &earth_texture, &moon);
     CelestialBody sun = CelestialBody(glm::vec3(0.0), 0.0, 0.0, &sun_geometry, &sun_texture, &earth);
 
     light.intensities = glm::vec3(1.0);

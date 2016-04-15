@@ -38,6 +38,8 @@ Click left mouse and drag left and right to rotate around the scene (azimuth)
 Click right mouse and drag up and down to adjust the altitude of the scene.
 
 Scroll middle mouse wheel to zoom in and out of the scene.
+
+KEY UP/KEY DOWN speeds up or slows down animation
 =====================================================
 
 EXTRA INFO
