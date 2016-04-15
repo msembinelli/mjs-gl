@@ -49,6 +49,10 @@ spent most of my time. I think it would be helpful in the
 future to give more hints with respect to surface normals
 and vertex vs fragment shading.
 
+Additionally, texturing was a huge time sink because of
+stretching anomolies and mirroring from the inside of
+the spheres.
+
 I estimate I spent about 30-40 hours working on the
 assignment and couldn't complete it. I would suggest
 some simplification for students in the future.
